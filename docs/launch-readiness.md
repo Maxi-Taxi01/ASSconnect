@@ -1,55 +1,72 @@
-# ASSconnect Static Launch Readiness Checklist
+# ASSconnect Launch Readiness Checklist
 
-## Implemented In This Static Prototype
+## Implemented In This Repository
 
-- Static HTML/CSS/JavaScript in `public/`.
-- Browser-local student, professional and admin demo roles.
-- Browser-local registration and login simulation.
-- Browser-local verification code flow.
-- Browser-local password reset code flow.
-- Browser-local profile storage through `localStorage`.
-- Profile create, edit, export and delete in the current browser.
+- Static GitHub Pages-compatible prototype in `public/`.
+- Server-backed app mode at `public/index.html?mode=server`.
+- Node backend in `server.js` with no external runtime dependencies.
+- Shared JSON database in `data/app-db.json`.
+- Real password hashing with PBKDF2.
+- Server-side bearer sessions with expiry.
+- Student, professional and admin roles.
+- Email verification and password reset token flows.
+- Local email outbox for verification, reset and contact messages.
+- Shared student profile storage across browsers when the server is running.
+- Professional accounts can search approved student profiles and see consented contact details.
+- Profile create, edit, export and delete workflows.
 - Profile visibility and contact consent controls.
-- Searchable student directory backed by seeded/local data.
-- Professional company profiles in local browser storage.
-- Contact request messaging in local browser storage.
+- Server-side photo and CV upload storage in `uploads/`.
+- Professional company profiles visible in the company directory.
+- Internal opportunity posting with admin approval.
+- External opportunity search links for TNO, imec and TU Delft.
 - Professional saved-student shortlist.
-- Internal opportunity posting with browser-local admin approval.
-- Admin profile moderation simulation.
-- Admin opportunity moderation simulation.
-- Profile reporting and report moderation simulation.
-- Basic analytics event capture in local browser storage.
-- Admin backup download.
-- Static backup restore.
-- Static demo data reset.
-- Browser-local retention cleanup for older messages, reports and analytics.
-- Company directory rendering.
-- Internal ASSconnect opportunity filtering.
-- Profile photo preview and downloadable CV links where consent allows.
-- CV/profile photo upload as local data URLs for prototype use.
-- Mobile responsive layout and keyboard-labeled forms.
-- Static smoke test confirming the page has no API dependency.
+- Contact request messaging stored on the server.
+- Admin profile, opportunity and report moderation.
+- Server-side analytics event capture.
+- Admin backup creation to `data/backup-*.json`.
+- Retention cleanup for expired tokens/sessions, old analytics and stale unverified users.
+- Static smoke test and API smoke test.
 
-## Outside Static-Only Scope
+## How To Run
 
-These are not compatible with a static-only webpage and should be treated as future platform work only if ASSconnect becomes a hosted multi-user service:
-
-- Shared backend and database for cross-device/cross-user profiles.
-- Real email delivery for verification and password reset.
-- Server-side authentication, secure sessions, rate limiting and abuse protection.
-- Server-side file scanning and private upload storage.
-- Managed production backups, monitoring and restore drills.
-- Live embedded vacancy ingestion from third parties, subject to permission/API access.
-- Formal legal, accessibility and security audits for a public production platform.
-
-## Deployment Notes
-
-Open directly:
+Static mode:
 
 ```text
 public/index.html
 ```
 
-Or host the `public/` folder with any static web host. The root `index.html` redirects to `public/index.html`.
+Server mode:
 
-Static hosting should still use HTTPS, a real domain, privacy review and accessibility testing before public launch.
+```text
+npm start
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4173/index.html?mode=server
+```
+
+Seed accounts:
+
+- `admin@assconnect.local` / `Admin123!`
+- `professional@assconnect.local` / `Professional123!`
+- `student@assconnect.local` / `Student123!`
+
+Runtime data is intentionally ignored by Git:
+
+- `data/app-db.json`
+- `data/backup-*.json`
+- `uploads/*`
+
+## Production Requirements Before Public Launch
+
+- Deploy the Node server behind HTTPS.
+- Replace JSON file storage with a managed database such as PostgreSQL.
+- Configure real SMTP or transactional email delivery.
+- Move uploaded CVs/photos to private object storage with malware scanning.
+- Add domain-specific privacy/legal review and a final GDPR data-processing record.
+- Add monitoring, alerting, restore drills and encrypted off-site backups.
+- Add stronger abuse protection for public registration and messaging.
+- Run accessibility, penetration and dependency audits.
+

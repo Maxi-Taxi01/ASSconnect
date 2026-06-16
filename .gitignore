@@ -11,6 +11,9 @@ uploads/*
 
 # Test scratch files
 tests/tmp-db.json
+tests/tmp-api-db.json
+tests/tmp-uploads/
+tests/backup-*.json
 
 # Logs and OS metadata
 *.log

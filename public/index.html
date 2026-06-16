@@ -395,6 +395,13 @@
     <p>Student and professional matching platform for Applied Sciences opportunities.</p>
   </footer>
 
-  <script src="script.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var script = document.createElement("script");
+      script.src = params.get("mode") === "server" ? "full.js" : "script.js";
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>

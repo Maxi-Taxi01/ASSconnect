@@ -4,17 +4,29 @@ This draft is intended for MVP testing and must be reviewed before public launch
 
 ## Data Collected
 
-This static prototype stores account data, student profile data, professional company data, contact requests, saved students, reports, admin actions and basic usage analytics in the visitor's browser through `localStorage`.
+In static mode, ASSconnect stores demo data in the visitor's browser through `localStorage`.
+
+In server mode, ASSconnect stores account data, student profile data, professional company data, contact requests, saved students, reports, admin actions, upload metadata and basic analytics in the server database at `data/app-db.json`.
 
 Student profile data may include name, programme, study year, availability, location, preferred opportunity type, skills, biography, links, email, phone, profile photo and CV.
 
 ## Purpose
 
-Data is used to simulate connecting students with professionals for internships, graduation projects, career opportunities, research collaborations and jobs.
+Data is used to connect students with professionals for internships, graduation projects, career opportunities, research collaborations and jobs.
 
 ## Visibility
 
-Students choose whether their profile is visible in search. Contact details and CV data are shown only when the student has consented and the viewer is logged in as a professional or admin.
+Students choose whether their profile is visible in search. Profiles require admin approval before appearing in the shared directory.
+
+Contact details and CV links are shown only when the student has consented and the viewer is logged in as a professional, admin or profile owner.
+
+## Email
+
+Server mode creates verification, password reset and contact request emails. In local development, these messages are written to the server outbox in the database. In production, ASSconnect must use a configured SMTP or transactional email provider.
+
+## Uploads
+
+Photo and CV uploads are stored in `uploads/` in server mode. Production should move uploads to private object storage, add malware scanning and restrict CV downloads to authorized users.
 
 ## Consent
 
@@ -22,18 +34,21 @@ Students must explicitly consent before storing and showing selected contact inf
 
 ## Retention
 
-The static prototype keeps data in the current browser until the user clears browser storage, exports/deletes data, or resets the prototype. Production should add scheduled retention cleanup.
+Server mode includes admin retention cleanup for expired sessions, expired reset/verification tokens, old analytics events and stale unverified users.
 
-The privacy section includes a local retention cleanup action for older messages, reports and analytics. It does not remove student profiles automatically because this static prototype has no server-side account lifecycle.
+Production should define formal retention periods for profiles, messages, audit logs and backups before public launch.
 
 ## Rights
 
-Users can export their stored account/profile data and request or perform deletion from the account tools. Admin audit data may be retained for security and compliance.
+Users can export their account/profile data and delete their profile or account from the account tools. Admin audit data may be retained for security and compliance.
 
 ## Security
 
-Passwords in the static prototype are demo-only and should not be reused. Static hosting should use HTTPS. A production multi-user version would need a real backend, password hashing, secure cookies or hardened token storage, rate limiting, audit review, backups, monitoring and a formal security review.
+Passwords are hashed in server mode. Static mode remains a demo-only browser prototype and should not be used for real private data.
+
+Production hosting must use HTTPS, secure secret management, hardened session storage, rate limiting, encrypted backups, monitoring and a formal security review.
 
 ## Third-Party Links
 
 ASSconnect links to external opportunity search engines such as TNO, imec and TU Delft. Those sites have their own privacy policies.
+
