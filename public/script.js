@@ -6,6 +6,17 @@ const defaultState = {
   nextResetCode: 275140,
   users: [
     {
+      id: "user_student",
+      role: "student",
+      name: "Emma Bakker",
+      email: "student@assconnect.local",
+      password: "Student123!",
+      companyName: "",
+      verified: true,
+      verificationCode: "",
+      resetCode: ""
+    },
+    {
       id: "user_admin",
       role: "admin",
       name: "ASSconnect Admin",
@@ -29,6 +40,35 @@ const defaultState = {
     }
   ],
   profiles: [
+    {
+      id: "profile_emma",
+      userId: "user_student",
+      status: "approved",
+      visible: true,
+      consentContact: true,
+      name: "Emma Bakker",
+      programme: "Applied Physics",
+      phase: "Master",
+      studyYear: "MSc 1",
+      looking: "Research collaboration",
+      availability: "Flexible",
+      availabilityDate: "2026-09-01",
+      location: "Delft",
+      remotePreference: "Hybrid",
+      languages: "Dutch, English",
+      email: "student@assconnect.local",
+      phone: "",
+      linkedin: "",
+      portfolio: "",
+      github: "",
+      website: "",
+      skills: ["quantum devices", "cryogenics", "Python"],
+      bio: "Explores quantum measurement, low-temperature setups and device characterization.",
+      photo: null,
+      cv: null,
+      createdAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T00:00:00.000Z"
+    },
     {
       id: "profile_maya",
       userId: "",
@@ -178,7 +218,8 @@ const defaultState = {
   savedStudents: [],
   messages: [],
   reports: [],
-  analytics: []
+  analytics: [],
+  retentionDays: 730
 };
 
 let db = loadStore();
@@ -238,10 +279,31 @@ function clone(value) {
 function loadStore() {
   try {
     const stored = JSON.parse(localStorage.getItem(storageKey));
-    return stored && stored.users && stored.profiles ? stored : clone(defaultState);
+    return stored && stored.users && stored.profiles ? normalizeStore(stored) : clone(defaultState);
   } catch {
     return clone(defaultState);
   }
+}
+
+function normalizeStore(stored) {
+  const fallback = clone(defaultState);
+  const withMissingDefaults = (existing = [], defaults = []) => {
+    const ids = new Set(existing.map((item) => item.id));
+    return [...existing, ...defaults.filter((item) => !ids.has(item.id))];
+  };
+  return {
+    ...fallback,
+    ...stored,
+    users: withMissingDefaults(stored.users, fallback.users),
+    profiles: withMissingDefaults(stored.profiles, fallback.profiles),
+    companies: withMissingDefaults(stored.companies, fallback.companies),
+    opportunities: withMissingDefaults(stored.opportunities, fallback.opportunities),
+    savedStudents: stored.savedStudents || [],
+    messages: stored.messages || [],
+    reports: stored.reports || [],
+    analytics: stored.analytics || [],
+    retentionDays: Number(stored.retentionDays || fallback.retentionDays)
+  };
 }
 
 function saveStore() {
@@ -339,16 +401,19 @@ function renderPreview() {
   const profile = { ...(state.profile || {}), ...draft };
   profile.skills = splitSkills(draft.skills || (state.profile?.skills || []).join(", "));
   const skills = profile.skills?.length ? profile.skills : [];
+  const photo = profile.photo?.data ? `<img class="profile-photo" src="${profile.photo.data}" alt="">` : `<span class="avatar">${escapeHtml(initials(profile.name))}</span>`;
+  const cvLink = profile.cv?.data ? `<a class="file-link" href="${profile.cv.data}" download="${escapeHtml(profile.cv.name || "cv")}">Download CV: ${escapeHtml(profile.cv.name || "CV")}</a>` : "";
   $("#profilePreview").innerHTML = `
     <div class="preview-cover"></div>
     <div class="preview-body">
-      <span class="avatar">${escapeHtml(initials(profile.name))}</span>
+      ${photo}
       <h3>${escapeHtml(profile.name || "Your name")}</h3>
       <p class="hint">${escapeHtml(profile.programme || "Programme")} | ${escapeHtml(profile.phase || "Study phase")}</p>
       <span class="badge status-${escapeHtml(profile.status || "pending")}">${escapeHtml(profile.status || "draft")}</span>
       <div class="badge-list">${skills.map((skill) => `<span class="badge">${escapeHtml(skill)}</span>`).join("") || `<span class="badge">Add skills</span>`}</div>
       <p>${escapeHtml(profile.bio || "Your short professional summary will appear here.")}</p>
       <p class="hint">${escapeHtml(profile.availability || "Availability pending")} | ${escapeHtml(profile.location || "Location pending")}</p>
+      ${cvLink}
     </div>
   `;
 }
@@ -363,6 +428,10 @@ function fillProfileForm(profile) {
     else field.value = Array.isArray(value) ? value.join(", ") : (value || "");
   });
   form.elements.namedItem("skills").value = (profile.skills || []).join(", ");
+  $("#profileFileStatus").textContent = [
+    profile.photo?.name ? `Photo: ${profile.photo.name}` : "No profile photo stored",
+    profile.cv?.name ? `CV: ${profile.cv.name}` : "No CV stored"
+  ].join(" | ");
 }
 
 function fillCompanyForm(company) {
@@ -386,6 +455,7 @@ function refreshCurrentData() {
   loadStudents();
   loadOpportunities();
   loadSavedStudents();
+  renderCompanyDirectory();
   loadMessages();
   loadAdmin();
 }
@@ -408,6 +478,7 @@ async function logout() {
   state.user = null;
   state.profile = null;
   state.company = null;
+  $("#profileForm").reset();
   renderSession();
   roleGate();
   renderPreview();
@@ -585,9 +656,11 @@ function studentCard(profile) {
   const canSeeContact = Boolean(profile.consentContact && (state.user?.role === "professional" || state.user?.role === "admin" || state.user?.id === profile.userId));
   const skills = (profile.skills || []).slice(0, 6).map((skill) => `<span class="badge">${escapeHtml(skill)}</span>`).join("");
   const canAct = Boolean(state.user);
+  const avatar = profile.photo?.data ? `<img class="student-photo" src="${profile.photo.data}" alt="">` : `<span class="student-avatar">${escapeHtml(initials(profile.name))}</span>`;
+  const cvLink = canSeeContact && profile.cv?.data ? `<a class="button ghost" href="${profile.cv.data}" download="${escapeHtml(profile.cv.name || "cv")}">CV</a>` : "";
   return `
     <article class="student-card">
-      <span class="student-avatar">${escapeHtml(initials(profile.name))}</span>
+      ${avatar}
       <h3>${escapeHtml(profile.name)}</h3>
       <p class="hint">${escapeHtml(profile.programme)} | ${escapeHtml(profile.phase)} | ${escapeHtml(profile.looking)}</p>
       <div class="badge-list">${skills}</div>
@@ -595,6 +668,7 @@ function studentCard(profile) {
       <p class="hint">${escapeHtml(profile.availability)} | ${escapeHtml(profile.location)} | ${escapeHtml(profile.remotePreference)}</p>
       <div class="card-actions">
         ${canSeeContact && profile.email ? `<a class="button ghost" href="mailto:${escapeHtml(profile.email)}">Email</a>` : ""}
+        ${cvLink}
         ${canAct ? `<button class="button ghost" data-contact="${escapeHtml(profile.id)}" type="button">Contact</button>` : ""}
         ${state.user?.role === "professional" || state.user?.role === "admin" ? `<button class="button ghost" data-save="${escapeHtml(profile.id)}" type="button">Save</button>` : ""}
         ${canAct ? `<button class="button ghost" data-report="${escapeHtml(profile.id)}" type="button">Report</button>` : ""}
@@ -727,8 +801,32 @@ function opportunityCard(opportunity) {
   `;
 }
 
-function loadOpportunities() {
-  const opportunities = db.opportunities.filter((opportunity) => opportunity.status === "approved");
+function filterOpportunities(opportunities, filters) {
+  const q = String(filters.q || "").toLowerCase();
+  const type = filters.type || "all";
+  const programme = String(filters.programme || "").toLowerCase();
+  const location = String(filters.location || "").toLowerCase();
+  return opportunities.filter((opportunity) => {
+    const haystack = [
+      opportunity.title,
+      opportunity.organization,
+      opportunity.type,
+      opportunity.programme,
+      opportunity.location,
+      opportunity.remotePreference,
+      opportunity.description
+    ].join(" ").toLowerCase();
+    return (!q || haystack.includes(q)) &&
+      (type === "all" || opportunity.type === type) &&
+      (!programme || String(opportunity.programme || "").toLowerCase().includes(programme)) &&
+      (!location || String(opportunity.location || "").toLowerCase().includes(location));
+  });
+}
+
+function loadOpportunities(event) {
+  if (event) event.preventDefault();
+  const filters = $("#internalOpportunityFilters") ? formDataObject($("#internalOpportunityFilters")) : {};
+  const opportunities = filterOpportunities(db.opportunities.filter((opportunity) => opportunity.status === "approved"), filters);
   $("#opportunityGrid").innerHTML = opportunities.length ? opportunities.map(opportunityCard).join("") : `<article class="opportunity-card"><h3>No internal opportunities yet</h3><p>Professionals can post opportunities for admin approval.</p></article>`;
 }
 
@@ -751,6 +849,7 @@ async function saveCompany(event) {
   else db.companies.push(company);
   saveStore();
   state.company = company;
+  renderCompanyDirectory();
   setStatus("Company profile saved locally.");
 }
 
@@ -790,6 +889,18 @@ function loadSavedStudents() {
   const savedIds = db.savedStudents.filter((item) => item.userId === state.user.id).map((item) => item.profileId);
   const students = db.profiles.filter((profile) => savedIds.includes(profile.id));
   $("#savedStudentsGrid").innerHTML = students.length ? students.map(studentCard).join("") : `<p class="hint">No saved students yet.</p>`;
+}
+
+function renderCompanyDirectory() {
+  const companies = db.companies;
+  $("#companyDirectory").innerHTML = companies.length ? companies.map((company) => `
+    <article class="company-card">
+      <h3>${escapeHtml(company.companyName)}</h3>
+      <p class="hint">${escapeHtml((company.sectors || []).join(", ") || "Sector pending")}</p>
+      <p>${escapeHtml(company.description || "No description yet.")}</p>
+      ${company.website ? `<a class="file-link" href="${escapeHtml(company.website)}" target="_blank" rel="noreferrer">Visit website</a>` : ""}
+    </article>
+  `).join("") : `<p class="hint">No company profiles yet.</p>`;
 }
 
 function loadMessages() {
@@ -860,6 +971,41 @@ async function createBackup() {
   setStatus("Static backup downloaded.");
 }
 
+async function runRetentionCleanup() {
+  const cutoff = Date.now() - Number(db.retentionDays || 730) * 24 * 60 * 60 * 1000;
+  const before = db.analytics.length + db.messages.length + db.reports.length;
+  db.analytics = db.analytics.filter((item) => Date.parse(item.createdAt || now()) >= cutoff);
+  db.messages = db.messages.filter((item) => Date.parse(item.createdAt || now()) >= cutoff);
+  db.reports = db.reports.filter((item) => Date.parse(item.createdAt || now()) >= cutoff || item.status === "open");
+  const after = db.analytics.length + db.messages.length + db.reports.length;
+  saveStore();
+  loadMessages();
+  loadAdmin();
+  setStatus(`Retention cleanup complete. Removed ${before - after} old local records.`);
+}
+
+async function resetDemoData() {
+  if (!confirm("Reset all static demo data in this browser?")) return;
+  db = clone(defaultState);
+  saveStore();
+  $("#profileForm").reset();
+  $("#companyForm").reset();
+  refreshCurrentData();
+  setStatus("Static demo data reset.");
+}
+
+async function restoreBackup(event) {
+  const file = event.currentTarget.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const restored = JSON.parse(text);
+  if (!restored.users || !restored.profiles) throw new Error("Backup file is not an ASSconnect static backup.");
+  db = normalizeStore(restored);
+  saveStore();
+  refreshCurrentData();
+  setStatus("Static backup restored.");
+}
+
 function downloadJson(name, data) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
@@ -901,11 +1047,15 @@ function bindEvents() {
     renderSources(new FormData(event.currentTarget).get("keyword"));
   });
   $("#refreshOpportunities").addEventListener("click", wrap(loadOpportunities));
+  $("#internalOpportunityFilters").addEventListener("submit", wrap(loadOpportunities));
   $("#companyForm").addEventListener("submit", wrap(saveCompany));
   $("#opportunityForm").addEventListener("submit", wrap(postOpportunity));
   $("#refreshAdmin").addEventListener("click", wrap(loadAdmin));
   $("#createBackup").addEventListener("click", wrap(createBackup));
   $("#exportAccount").addEventListener("click", wrap(exportAccount));
+  $("#runRetention").addEventListener("click", wrap(runRetentionCleanup));
+  $("#resetDemoData").addEventListener("click", wrap(resetDemoData));
+  $("#restoreBackup").addEventListener("change", wrap(restoreBackup));
   $("#deleteAccount").addEventListener("click", wrap(deleteAccount));
   document.addEventListener("click", wrap(async (event) => {
     const contact = event.target.closest("[data-contact]");
@@ -948,6 +1098,7 @@ function init() {
   loadStudents();
   loadOpportunities();
   loadSavedStudents();
+  renderCompanyDirectory();
   loadMessages();
   loadAdmin();
   setStatus("ASSconnect static page is ready.");

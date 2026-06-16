@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#students">Skip to student search</a>
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ASSconnect home">
       <img src="assets/Icon.png" alt="ASSconnect logo">
@@ -26,6 +27,7 @@
       <a href="#students">Students</a>
       <a href="#professionals">Professionals</a>
       <a href="#admin">Admin</a>
+      <a href="#privacy">Privacy</a>
     </nav>
   </header>
 
@@ -42,7 +44,7 @@
       </div>
     </section>
 
-    <section class="status-strip" aria-live="polite">
+    <section class="status-strip" aria-live="polite" role="status">
       <p id="appStatus">Loading ASSconnect...</p>
       <div class="session-bar" id="sessionBar"></div>
     </section>
@@ -60,6 +62,7 @@
           <button class="button primary" type="submit">Log in</button>
           <p class="hint">Demo admin: admin@assconnect.local / Admin123!</p>
           <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
+          <p class="hint">Demo student: student@assconnect.local / Student123!</p>
         </form>
 
         <form class="panel" id="registerForm">
@@ -166,6 +169,7 @@
             <button class="button ghost" id="exportProfile" type="button">Export my data</button>
             <button class="button danger" id="deleteProfile" type="button">Delete profile</button>
           </div>
+          <p class="hint" id="profileFileStatus">Photo and CV are stored only in this browser for the static prototype.</p>
           <p class="hint">New or edited student profiles are submitted for admin approval before public listing.</p>
         </form>
 
@@ -240,6 +244,22 @@
         <h3>ASSconnect opportunities</h3>
         <button class="button ghost" id="refreshOpportunities" type="button">Refresh</button>
       </div>
+      <form class="directory-toolbar compact-toolbar" id="internalOpportunityFilters">
+        <label>Keyword <input name="q" type="search" placeholder="sensor, process, biotech..."></label>
+        <label>Type
+          <select name="type">
+            <option value="all">All types</option>
+            <option>Internship</option>
+            <option>Graduation project</option>
+            <option>Career opportunity</option>
+            <option>Job</option>
+            <option>Research collaboration</option>
+          </select>
+        </label>
+        <label>Programme <input name="programme" type="search" placeholder="Applied Physics"></label>
+        <label>Location <input name="location" type="search" placeholder="Delft"></label>
+        <button class="button primary" type="submit">Filter internal</button>
+      </form>
       <div class="opportunity-grid" id="opportunityGrid"></div>
     </section>
 
@@ -289,6 +309,10 @@
       <div class="panel">
         <h3>Shortlisted students</h3>
         <div class="student-grid compact" id="savedStudentsGrid"></div>
+      </div>
+      <div class="panel">
+        <h3>Company directory</h3>
+        <div class="company-grid" id="companyDirectory"></div>
       </div>
       <div class="panel">
         <h3>Messages</h3>
@@ -352,8 +376,13 @@
         <h3>Account tools</h3>
         <div class="form-actions">
           <button class="button ghost" id="exportAccount" type="button">Export account data</button>
+          <button class="button ghost" id="runRetention" type="button">Run retention cleanup</button>
+          <button class="button ghost" id="resetDemoData" type="button">Reset static demo data</button>
           <button class="button danger" id="deleteAccount" type="button">Delete account</button>
         </div>
+        <label class="restore-control">Restore static backup
+          <input id="restoreBackup" type="file" accept="application/json,.json">
+        </label>
       </div>
     </section>
   </main>

@@ -20,26 +20,27 @@
 - Profile reporting and report moderation simulation.
 - Basic analytics event capture in local browser storage.
 - Admin backup download.
+- Static backup restore.
+- Static demo data reset.
+- Browser-local retention cleanup for older messages, reports and analytics.
+- Company directory rendering.
+- Internal ASSconnect opportunity filtering.
+- Profile photo preview and downloadable CV links where consent allows.
 - CV/profile photo upload as local data URLs for prototype use.
 - Mobile responsive layout and keyboard-labeled forms.
 - Static smoke test confirming the page has no API dependency.
 
-## Required Before Public Production
+## Outside Static-Only Scope
 
-- Add a real backend and database if profiles must be shared across users.
-- Replace JSON file storage with a managed database such as PostgreSQL.
-- Replace local verification/reset codes with a real email provider.
-- Move auth tokens to hardened secure cookies or another reviewed session strategy.
-- Add rate limiting and brute-force protection.
-- Add malware scanning and file-type validation for CV/photo uploads.
-- Add scheduled retention cleanup according to the retention policy.
-- Configure production hosting.
-- Configure domain and HTTPS certificates.
-- Configure automated backups and restore drills.
-- Configure uptime monitoring and error logging.
-- Run an accessibility audit with screen reader and keyboard-only testing.
-- Run a security review and penetration test.
-- Confirm whether external vacancy sites allow embedded live result ingestion before building scrapers or API integrations.
+These are not compatible with a static-only webpage and should be treated as future platform work only if ASSconnect becomes a hosted multi-user service:
+
+- Shared backend and database for cross-device/cross-user profiles.
+- Real email delivery for verification and password reset.
+- Server-side authentication, secure sessions, rate limiting and abuse protection.
+- Server-side file scanning and private upload storage.
+- Managed production backups, monitoring and restore drills.
+- Live embedded vacancy ingestion from third parties, subject to permission/API access.
+- Formal legal, accessibility and security audits for a public production platform.
 
 ## Deployment Notes
 
@@ -51,4 +52,4 @@ public/index.html
 
 Or host the `public/` folder with any static web host. The root `index.html` redirects to `public/index.html`.
 
-Production should still use HTTPS, a real domain, privacy review and accessibility testing before launch.
+Static hosting should still use HTTPS, a real domain, privacy review and accessibility testing before public launch.

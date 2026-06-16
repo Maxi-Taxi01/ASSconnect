@@ -24,13 +24,15 @@ Students must explicitly consent before storing and showing selected contact inf
 
 The static prototype keeps data in the current browser until the user clears browser storage, exports/deletes data, or resets the prototype. Production should add scheduled retention cleanup.
 
+The privacy section includes a local retention cleanup action for older messages, reports and analytics. It does not remove student profiles automatically because this static prototype has no server-side account lifecycle.
+
 ## Rights
 
 Users can export their stored account/profile data and request or perform deletion from the account tools. Admin audit data may be retained for security and compliance.
 
 ## Security
 
-Passwords in the static prototype are demo-only and should not be reused. Production must add a real backend, password hashing, HTTPS, secure cookies or hardened token storage, rate limiting, audit review, backups, monitoring and a formal security review.
+Passwords in the static prototype are demo-only and should not be reused. Static hosting should use HTTPS. A production multi-user version would need a real backend, password hashing, secure cookies or hardened token storage, rate limiting, audit review, backups, monitoring and a formal security review.
 
 ## Third-Party Links
 
