@@ -1,0 +1,9 @@
+{
+  "name": "assconnect-platform",
+  "version": "1.0.0",
+  "description": "Static ASSconnect student and professional matching prototype",
+  "scripts": {
+    "test": "node tests/static-smoke.js"
+  },
+  "license": "UNLICENSED"
+}

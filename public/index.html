@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Opportunities</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav class="site-nav" id="siteNav" aria-label="Primary navigation">
+      <a href="#opportunities">Opportunities</a>
+      <a href="#profile">Profile</a>
+      <a href="#students">Students</a>
+      <a href="#professionals">Professionals</a>
+      <a href="#admin">Admin</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-copy">
+        <p class="eyebrow">Applied Sciences Connect</p>
+        <h1>Meet the people and projects shaping your next step.</h1>
+        <p class="hero-text">Connect students, researchers and professionals for internships, graduation projects, career opportunities and jobs.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#auth">Start matching</a>
+          <a class="button secondary" href="#students">Search students</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-strip" aria-live="polite">
+      <p id="appStatus">Loading ASSconnect...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="auth-section" id="auth">
+      <div class="section-header">
+        <p class="eyebrow">Accounts</p>
+        <h2>Sign in, register, verify email, or recover access.</h2>
+      </div>
+      <div class="auth-grid">
+        <form class="panel" id="loginForm">
+          <h3>Log in</h3>
+          <label>Email <input name="email" type="email" required autocomplete="email"></label>
+          <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+          <button class="button primary" type="submit">Log in</button>
+          <p class="hint">Demo admin: admin@assconnect.local / Admin123!</p>
+          <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
+        </form>
+
+        <form class="panel" id="registerForm">
+          <h3>Create account</h3>
+          <label>Role
+            <select name="role" required>
+              <option value="student">Student</option>
+              <option value="professional">Professional</option>
+            </select>
+          </label>
+          <label>Name <input name="name" type="text" required></label>
+          <label>Email <input name="email" type="email" required autocomplete="email"></label>
+          <label>Company name <input name="companyName" type="text"></label>
+          <label>Password <input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+          <button class="button primary" type="submit">Register</button>
+        </form>
+
+        <form class="panel" id="verifyForm">
+          <h3>Email verification</h3>
+          <label>Email <input name="email" type="email" required></label>
+          <label>Verification code <input name="code" type="text" inputmode="numeric" required></label>
+          <button class="button ghost" type="submit">Verify email</button>
+          <p class="hint">For this local MVP, codes are shown after registration instead of being emailed.</p>
+        </form>
+
+        <form class="panel" id="resetForm">
+          <h3>Password reset</h3>
+          <label>Email <input name="email" type="email" required></label>
+          <button class="button ghost" name="request" value="request" type="submit">Request reset code</button>
+          <label>Reset code <input name="code" type="text" inputmode="numeric"></label>
+          <label>New password <input name="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
+          <button class="button ghost" name="reset" value="reset" type="submit">Reset password</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="profile-section" id="profile">
+      <div class="section-header">
+        <p class="eyebrow">Student profile</p>
+        <h2>Create, edit, export or delete a professional-facing profile.</h2>
+      </div>
+      <div class="profile-layout">
+        <form class="panel profile-form" id="profileForm">
+          <div class="form-grid">
+            <label>Full name <input name="name" type="text" required></label>
+            <label>Programme
+              <select name="programme" required>
+                <option value="">Select programme</option>
+                <option>Applied Physics</option>
+                <option>Life Science & Technology</option>
+                <option>Molecular Science & Technology</option>
+                <option>Nanobiology</option>
+                <option>Chemical Engineering</option>
+                <option>Other Applied Sciences</option>
+              </select>
+            </label>
+            <label>Study phase
+              <select name="phase">
+                <option>Bachelor</option>
+                <option>Master</option>
+                <option>Graduating</option>
+                <option>PhD orientation</option>
+              </select>
+            </label>
+            <label>Study year <input name="studyYear" type="text" placeholder="BSc 3, MSc 1, graduating"></label>
+            <label>Looking for
+              <select name="looking">
+                <option>Internship</option>
+                <option>Graduation project</option>
+                <option>Career opportunity</option>
+                <option>Job</option>
+                <option>Research collaboration</option>
+              </select>
+            </label>
+            <label>Availability text <input name="availability" type="text" placeholder="From September 2026, 24 h/week"></label>
+            <label>Availability date <input name="availabilityDate" type="date"></label>
+            <label>Location <input name="location" type="text" placeholder="Delft, Leiden, remote"></label>
+            <label>Remote preference
+              <select name="remotePreference">
+                <option>On-site</option>
+                <option>Hybrid</option>
+                <option>Remote</option>
+                <option>Flexible</option>
+              </select>
+            </label>
+            <label>Languages <input name="languages" type="text" placeholder="Dutch, English"></label>
+            <label>Email <input name="email" type="email" required></label>
+            <label>Phone <input name="phone" type="tel"></label>
+            <label>LinkedIn <input name="linkedin" type="url" placeholder="https://linkedin.com/in/..."></label>
+            <label>Portfolio <input name="portfolio" type="url"></label>
+            <label>GitHub <input name="github" type="url"></label>
+            <label>Website <input name="website" type="url"></label>
+          </div>
+          <label>Skills and methods <input name="skills" type="text" placeholder="Python, microscopy, process design"></label>
+          <label>Short bio <textarea name="bio" rows="5" placeholder="A concise summary for companies, recruiters and research groups."></textarea></label>
+          <div class="form-grid">
+            <label>Profile photo <input name="photo" type="file" accept="image/*"></label>
+            <label>CV upload <input name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf"></label>
+          </div>
+          <label class="check-line"><input name="visible" type="checkbox" checked> Visible in student search</label>
+          <label class="check-line"><input name="consentContact" type="checkbox" required> I consent to ASSconnect storing my profile and showing my selected contact information to logged-in professionals.</label>
+          <div class="form-actions">
+            <button class="button primary" type="submit">Save profile</button>
+            <button class="button ghost" id="exportProfile" type="button">Export my data</button>
+            <button class="button danger" id="deleteProfile" type="button">Delete profile</button>
+          </div>
+          <p class="hint">New or edited student profiles are submitted for admin approval before public listing.</p>
+        </form>
+
+        <aside class="preview-card" id="profilePreview" aria-label="Profile preview"></aside>
+      </div>
+    </section>
+
+    <section class="students-section" id="students">
+      <div class="section-header">
+        <p class="eyebrow">Student directory</p>
+        <h2>Search students by study, skill, opportunity type and availability.</h2>
+      </div>
+      <form class="directory-toolbar" id="studentFilters">
+        <label>Keyword <input name="q" type="search" placeholder="quantum, biotech, Python, name..."></label>
+        <label>Programme
+          <select name="programme">
+            <option value="all">All programmes</option>
+            <option>Applied Physics</option>
+            <option>Life Science & Technology</option>
+            <option>Molecular Science & Technology</option>
+            <option>Nanobiology</option>
+            <option>Chemical Engineering</option>
+          </select>
+        </label>
+        <label>Opportunity type
+          <select name="looking">
+            <option value="all">All types</option>
+            <option>Internship</option>
+            <option>Graduation project</option>
+            <option>Career opportunity</option>
+            <option>Job</option>
+            <option>Research collaboration</option>
+          </select>
+        </label>
+        <label>Skill <input name="skill" type="search" placeholder="microscopy"></label>
+        <label>Location <input name="location" type="search" placeholder="Delft"></label>
+        <label>Remote
+          <select name="remote">
+            <option value="all">Any</option>
+            <option>On-site</option>
+            <option>Hybrid</option>
+            <option>Remote</option>
+            <option>Flexible</option>
+          </select>
+        </label>
+        <button class="button primary" type="submit">Search</button>
+      </form>
+      <p class="student-results-meta" id="studentResultsMeta"></p>
+      <div class="student-grid" id="studentGrid" aria-live="polite"></div>
+      <form class="panel contact-panel hidden" id="contactForm">
+        <h3 id="contactTitle">Contact student</h3>
+        <label>Subject <input name="subject" type="text" required></label>
+        <label>Message <textarea name="message" rows="4" required></textarea></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">Send contact request</button>
+          <button class="button ghost" id="cancelContact" type="button">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="opportunity-section" id="opportunities">
+      <div class="section-header">
+        <p class="eyebrow">Opportunities</p>
+        <h2>Search external boards and ASSconnect-posted opportunities.</h2>
+      </div>
+      <form class="search-panel" id="opportunitySearch">
+        <label>Keyword <input name="keyword" type="search" placeholder="quantum sensing, biotech, AI..."></label>
+        <button class="button primary" type="submit">Update opportunity links</button>
+      </form>
+      <div class="source-grid" id="sourceGrid"></div>
+      <div class="subheader">
+        <h3>ASSconnect opportunities</h3>
+        <button class="button ghost" id="refreshOpportunities" type="button">Refresh</button>
+      </div>
+      <div class="opportunity-grid" id="opportunityGrid"></div>
+    </section>
+
+    <section class="professionals-section" id="professionals">
+      <div class="section-header">
+        <p class="eyebrow">For professionals</p>
+        <h2>Manage company profile, shortlist students and post opportunities.</h2>
+      </div>
+      <div class="two-column">
+        <form class="panel" id="companyForm">
+          <h3>Company profile</h3>
+          <label>Company name <input name="companyName" type="text" required></label>
+          <label>Website <input name="website" type="url"></label>
+          <label>Sectors <input name="sectors" type="text" placeholder="Research, biotech, energy"></label>
+          <label>Description <textarea name="description" rows="4"></textarea></label>
+          <button class="button primary" type="submit">Save company</button>
+        </form>
+        <form class="panel" id="opportunityForm">
+          <h3>Post opportunity</h3>
+          <label>Title <input name="title" type="text" required></label>
+          <label>Organization <input name="organization" type="text"></label>
+          <label>Type
+            <select name="type">
+              <option>Internship</option>
+              <option>Graduation project</option>
+              <option>Career opportunity</option>
+              <option>Job</option>
+              <option>Research collaboration</option>
+            </select>
+          </label>
+          <label>Programme <input name="programme" type="text"></label>
+          <label>Location <input name="location" type="text"></label>
+          <label>Remote preference
+            <select name="remotePreference">
+              <option>On-site</option>
+              <option>Hybrid</option>
+              <option>Remote</option>
+              <option>Flexible</option>
+            </select>
+          </label>
+          <label>Deadline <input name="deadline" type="date"></label>
+          <label>External link <input name="link" type="url"></label>
+          <label>Description <textarea name="description" rows="4"></textarea></label>
+          <button class="button primary" type="submit">Submit for approval</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>Shortlisted students</h3>
+        <div class="student-grid compact" id="savedStudentsGrid"></div>
+      </div>
+      <div class="panel">
+        <h3>Messages</h3>
+        <div id="messagesList" class="message-list"></div>
+      </div>
+    </section>
+
+    <section class="admin-section" id="admin">
+      <div class="section-header">
+        <p class="eyebrow">Admin</p>
+        <h2>Approve profiles, moderate reports, approve opportunities and create backups.</h2>
+      </div>
+      <div class="panel">
+        <div class="subheader">
+          <h3>Admin dashboard</h3>
+          <button class="button ghost" id="refreshAdmin" type="button">Refresh admin queue</button>
+        </div>
+        <div class="stat-grid" id="adminSummary"></div>
+        <div class="admin-grid">
+          <div>
+            <h3>Pending profiles</h3>
+            <div id="pendingProfiles"></div>
+          </div>
+          <div>
+            <h3>Pending opportunities</h3>
+            <div id="pendingOpportunities"></div>
+          </div>
+          <div>
+            <h3>Open reports</h3>
+            <div id="openReports"></div>
+          </div>
+          <div>
+            <h3>Users</h3>
+            <div id="adminUsers"></div>
+          </div>
+        </div>
+        <button class="button primary" id="createBackup" type="button">Create backup</button>
+      </div>
+    </section>
+
+    <section class="privacy-section" id="privacy">
+      <div class="section-header">
+        <p class="eyebrow">Privacy and launch readiness</p>
+        <h2>Controls for GDPR, retention, deletion, backups, analytics and deployment.</h2>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3>Consent and visibility</h3>
+          <p>Students choose whether a profile is searchable and must consent before contact data is shown to logged-in professionals.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Export and delete</h3>
+          <p>Signed-in users can export their stored data and delete their profile or account from the account tools.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Production checklist</h3>
+          <p>See docs for HTTPS, domain, backups, monitoring and security hardening before public launch.</p>
+        </article>
+      </div>
+      <div class="panel account-tools">
+        <h3>Account tools</h3>
+        <div class="form-actions">
+          <button class="button ghost" id="exportAccount" type="button">Export account data</button>
+          <button class="button danger" id="deleteAccount" type="button">Delete account</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Opportunities</span>
+    </div>
+    <p>Student and professional matching platform for Applied Sciences opportunities.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
