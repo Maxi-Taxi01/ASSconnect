@@ -222,9 +222,37 @@ h3 {
   font-size: 1.08rem;
 }
 
+.hero-statement {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 44px;
+  align-items: center;
+  margin: 28px 0 0;
+  padding: 9px 26px 10px 28px;
+  color: #fff;
+  background: rgba(23, 32, 39, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: "Mulish", Arial, sans-serif;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hero-statement::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  content: "";
+  background: var(--brand-red);
+}
+
 .hero-text {
   max-width: 680px;
-  margin: 24px 0 0;
+  margin: 18px 0 0;
   color: rgba(255, 255, 255, 0.9);
   font-size: clamp(1rem, 1.3vw, 1.2rem);
   line-height: 1.7;
