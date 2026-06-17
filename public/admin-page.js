@@ -84,6 +84,7 @@
 
   function renderSession() {
     const bar = $("#sessionBar");
+    setHidden($("#authNavActions"), Boolean(state.user));
     if (!bar) return;
     if (!state.user) {
       bar.innerHTML = `<span>Not logged in</span>`;

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#accountPage">Skip to account access</a>
+  <header class="site-header">
+    <a class="brand" href="index.html?mode=server#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html?mode=server#opportunities">Opportunities</a>
+      <a href="index.html?mode=server#about">About</a>
+      <a href="profile.html?mode=server">Profile</a>
+      <a href="students.html?mode=server">Students</a>
+      <a href="professionals.html?mode=server">Professionals</a>
+      <a href="admin.html?mode=server">Admin</a>
+      <a href="account.html?mode=server&tab=register" aria-current="page">Sign up</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+
+  <main class="account-page-main" id="accountPage">
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading account access...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="account-page-section">
+      <div class="section-header">
+        <p class="eyebrow">Account access</p>
+        <h1>Create an ASSconnect account.</h1>
+        <p class="section-intro">Visitors can register as a student or professional, verify their email, then use ASSconnect from any browser connected to this server.</p>
+      </div>
+
+      <div class="account-page-layout">
+        <div class="panel account-panel">
+          <div class="auth-tabs" role="tablist" aria-label="Account actions">
+            <button class="auth-tab" id="authTabLogin" type="button" role="tab" aria-controls="loginForm" data-auth-tab="login">Log in</button>
+            <button class="auth-tab" id="authTabRegister" type="button" role="tab" aria-controls="registerForm" data-auth-tab="register">Create account</button>
+            <button class="auth-tab" id="authTabVerify" type="button" role="tab" aria-controls="verifyForm" data-auth-tab="verify">Email verification</button>
+            <button class="auth-tab" id="authTabReset" type="button" role="tab" aria-controls="resetForm" data-auth-tab="reset">Password reset</button>
+          </div>
+
+          <form class="auth-panel" id="loginForm" role="tabpanel" aria-labelledby="authTabLogin" data-auth-panel="login">
+            <h2>Log in</h2>
+            <label>Email <input name="email" type="email" required autocomplete="email"></label>
+            <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+            <button class="button primary" type="submit">Log in</button>
+            <p class="hint">Demo student: student@assconnect.local / Student123!</p>
+            <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
+          </form>
+
+          <form class="auth-panel" id="registerForm" role="tabpanel" aria-labelledby="authTabRegister" data-auth-panel="register">
+            <h2>Create account</h2>
+            <div class="form-grid">
+              <label>Role
+                <select name="role" required>
+                  <option value="student">Student</option>
+                  <option value="professional">Professional</option>
+                </select>
+              </label>
+              <label>Name <input name="name" type="text" required autocomplete="name"></label>
+              <label>Email <input name="email" type="email" required autocomplete="email"></label>
+              <label>Company name <input name="companyName" type="text"></label>
+              <label>Password <input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+            </div>
+            <button class="button primary" type="submit">Create account</button>
+          </form>
+
+          <form class="auth-panel" id="verifyForm" role="tabpanel" aria-labelledby="authTabVerify" data-auth-panel="verify">
+            <h2>Email verification</h2>
+            <label>Email <input name="email" type="email" required></label>
+            <label>Verification code <input name="code" type="text" inputmode="numeric" required></label>
+            <button class="button primary" type="submit">Verify email</button>
+            <p class="hint">For this local MVP, the verification code is shown after registration instead of being emailed.</p>
+          </form>
+
+          <form class="auth-panel" id="resetForm" role="tabpanel" aria-labelledby="authTabReset" data-auth-panel="reset">
+            <h2>Password reset</h2>
+            <label>Email <input name="email" type="email" required></label>
+            <button class="button ghost" name="request" value="request" type="submit">Request reset code</button>
+            <label>Reset code <input name="code" type="text" inputmode="numeric"></label>
+            <label>New password <input name="newPassword" type="password" minlength="8" autocomplete="new-password"></label>
+            <button class="button primary" name="reset" value="reset" type="submit">Reset password</button>
+          </form>
+        </div>
+
+        <aside class="panel account-help-panel">
+          <h2>What happens next</h2>
+          <p class="hint">Students can create a student profile after logging in. Professionals can create a company profile and contact students after logging in.</p>
+          <div class="form-actions">
+            <a class="button ghost" href="profile.html?mode=server">Student profile</a>
+            <a class="button ghost" href="professionals.html?mode=server">Professional tools</a>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Account</span>
+    </div>
+    <p>Account access for ASSconnect visitors, students and professionals.</p>
+  </footer>
+
+  <script src="account-page.js"></script>
+</body>
+</html>

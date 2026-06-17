@@ -12,6 +12,8 @@ const files = [
   "public/professionals-page.js",
   "public/admin.html",
   "public/admin-page.js",
+  "public/account.html",
+  "public/account-page.js",
   "public/styles.css",
   "public/script.js",
   "public/assets/Icon.png",

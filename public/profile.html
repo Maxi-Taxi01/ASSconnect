@@ -25,6 +25,10 @@
       <a href="admin.html?mode=server">Admin</a>
       <a href="index.html?mode=server#privacy">Privacy</a>
     </nav>
+    <div class="header-actions" id="authNavActions">
+      <a class="button ghost nav-auth-button" href="account.html?mode=server&tab=login">Log in</a>
+      <a class="button primary nav-auth-button" href="account.html?mode=server&tab=register">Sign up</a>
+    </div>
     <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
       <span></span>
       <span></span>
@@ -53,7 +57,7 @@
           <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
           <button class="button primary" type="submit">Log in</button>
         </form>
-        <p class="hint">Need an account? Use the Sign up button on the homepage.</p>
+        <p class="hint">Need an account? Use the Sign up button at the top.</p>
       </div>
 
       <div class="panel signed-out-panel hidden" id="roleBlockedState">
