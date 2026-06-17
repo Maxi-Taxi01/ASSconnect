@@ -230,6 +230,18 @@ h3 {
   line-height: 1.7;
 }
 
+.hero-statement {
+  display: inline-flex;
+  margin: 18px 0 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--brand-red);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  font-family: "Mulish", Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 .hero-actions,
 .form-actions {
   display: flex;
