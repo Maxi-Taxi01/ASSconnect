@@ -10,6 +10,8 @@ const files = [
   "public/students-page.js",
   "public/professionals.html",
   "public/professionals-page.js",
+  "public/admin.html",
+  "public/admin-page.js",
   "public/styles.css",
   "public/script.js",
   "public/assets/Icon.png",

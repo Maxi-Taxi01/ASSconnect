@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#adminPage">Skip to admin profiles</a>
+  <header class="site-header">
+    <a class="brand" href="index.html?mode=server#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html?mode=server#opportunities">Opportunities</a>
+      <a href="index.html?mode=server#about">About</a>
+      <a href="profile.html?mode=server">Profile</a>
+      <a href="students.html?mode=server">Students</a>
+      <a href="professionals.html?mode=server">Professionals</a>
+      <a href="admin.html?mode=server" aria-current="page">Admin</a>
+      <a href="index.html?mode=server#privacy">Privacy</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+
+  <main class="admin-page-main" id="adminPage">
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading admin profiles...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="admin-page-section">
+      <div class="section-header">
+        <p class="eyebrow">Admin profiles</p>
+        <h1>Manage all created profiles.</h1>
+        <p class="section-intro">View, filter, edit, delete or add student and company profiles from one admin workspace.</p>
+      </div>
+
+      <div class="panel signed-out-panel hidden" id="adminSignedOutState">
+        <h2>Log in as admin</h2>
+        <p class="hint">Admin tools are restricted to admin accounts.</p>
+        <form class="inline-login-form" id="adminLoginForm">
+          <label>Email <input name="email" type="email" required autocomplete="email"></label>
+          <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+          <button class="button primary" type="submit">Log in</button>
+        </form>
+        <p class="hint">Demo admin: admin@assconnect.local / Admin123!</p>
+      </div>
+
+      <div class="panel signed-out-panel hidden" id="adminRoleBlockedState">
+        <h2>Admin account needed</h2>
+        <p class="hint">This page can only be used by ASSconnect admins.</p>
+        <a class="button ghost" href="index.html?mode=server">Back to homepage</a>
+      </div>
+
+      <div class="admin-page-workspace hidden" id="adminWorkspace">
+        <div class="stat-grid admin-page-stats" id="adminSummary"></div>
+
+        <div class="admin-management-grid">
+          <section class="panel admin-editor-panel">
+            <div class="subheader admin-panel-header">
+              <h2>Student profile</h2>
+              <button class="button ghost" id="newStudentProfile" type="button">New student</button>
+            </div>
+            <form id="adminStudentForm">
+              <input name="id" type="hidden">
+              <div class="form-grid">
+                <label>Full name <input name="name" type="text" required></label>
+                <label>Email <input name="email" type="email" required></label>
+                <label>Programme
+                  <select name="programme" required>
+                    <option value="">Select programme</option>
+                    <option>Applied Physics</option>
+                    <option>Life Science & Technology</option>
+                    <option>Molecular Science & Technology</option>
+                    <option>Nanobiology</option>
+                    <option>Chemical Engineering</option>
+                    <option>Other Applied Sciences</option>
+                  </select>
+                </label>
+                <label>Study phase
+                  <select name="phase">
+                    <option>Bachelor</option>
+                    <option>Master</option>
+                    <option>Graduating</option>
+                    <option>PhD orientation</option>
+                  </select>
+                </label>
+                <label>Study year <input name="studyYear" type="text"></label>
+                <label>Looking for
+                  <select name="looking">
+                    <option>Internship</option>
+                    <option>Graduation project</option>
+                    <option>Career opportunity</option>
+                    <option>Job</option>
+                    <option>Research collaboration</option>
+                  </select>
+                </label>
+                <label>Availability <input name="availability" type="text"></label>
+                <label>Availability date <input name="availabilityDate" type="date"></label>
+                <label>Location <input name="location" type="text"></label>
+                <label>Remote preference
+                  <select name="remotePreference">
+                    <option>On-site</option>
+                    <option>Hybrid</option>
+                    <option>Remote</option>
+                    <option>Flexible</option>
+                  </select>
+                </label>
+                <label>Languages <input name="languages" type="text" placeholder="Dutch, English"></label>
+                <label>Phone <input name="phone" type="tel"></label>
+                <label>LinkedIn <input name="linkedin" type="url"></label>
+                <label>Status
+                  <select name="moderationStatus">
+                    <option>approved</option>
+                    <option>pending</option>
+                    <option>rejected</option>
+                  </select>
+                </label>
+              </div>
+              <label>Skills and methods <input name="skills" type="text" placeholder="Python, microscopy, process design"></label>
+              <label>Short bio <textarea name="bio" rows="4"></textarea></label>
+              <label>Moderation note <input name="moderationNote" type="text"></label>
+              <label class="check-line"><input name="visible" type="checkbox" checked> Visible in student search</label>
+              <label class="check-line"><input name="consentContact" type="checkbox" checked> Contact consent recorded</label>
+              <div class="form-actions">
+                <button class="button primary" type="submit">Save student profile</button>
+                <button class="button ghost" id="clearStudentForm" type="button">Clear</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel admin-editor-panel">
+            <div class="subheader admin-panel-header">
+              <h2>Company profile</h2>
+              <button class="button ghost" id="newCompanyProfile" type="button">New company</button>
+            </div>
+            <form id="adminCompanyForm">
+              <input name="id" type="hidden">
+              <label>Company name <input name="companyName" type="text" required></label>
+              <label>Account email <input name="accountEmail" type="email" required></label>
+              <label>Website <input name="website" type="url"></label>
+              <label>Sectors <input name="sectors" type="text" placeholder="Research, biotech, energy"></label>
+              <label>Description <textarea name="description" rows="5"></textarea></label>
+              <label class="check-line"><input name="approved" type="checkbox" checked> Approved and visible in company directory</label>
+              <div class="form-actions">
+                <button class="button primary" type="submit">Save company profile</button>
+                <button class="button ghost" id="clearCompanyForm" type="button">Clear</button>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <section class="admin-directory-section">
+          <div class="section-header admin-list-header">
+            <p class="eyebrow">Student records</p>
+            <h2>All created student profiles</h2>
+          </div>
+          <form class="directory-toolbar admin-page-filters" id="adminStudentFilters">
+            <label>Keyword <input name="q" type="search" placeholder="name, skill, programme..."></label>
+            <label>Status
+              <select name="status">
+                <option value="all">All statuses</option>
+                <option>approved</option>
+                <option>pending</option>
+                <option>rejected</option>
+              </select>
+            </label>
+            <label>Programme <input name="programme" type="search" placeholder="Applied Physics"></label>
+            <button class="button primary" type="submit">Filter students</button>
+            <button class="button ghost" id="resetAdminStudentFilters" type="button">Reset</button>
+          </form>
+          <p class="student-results-meta" id="adminStudentMeta"></p>
+          <div class="admin-record-grid" id="adminStudentList" aria-live="polite"></div>
+        </section>
+
+        <section class="admin-directory-section">
+          <div class="section-header admin-list-header">
+            <p class="eyebrow">Company records</p>
+            <h2>All created company profiles</h2>
+          </div>
+          <form class="directory-toolbar admin-page-filters" id="adminCompanyFilters">
+            <label>Keyword <input name="q" type="search" placeholder="company, sector, description..."></label>
+            <label>Status
+              <select name="status">
+                <option value="all">All statuses</option>
+                <option value="approved">Approved</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </label>
+            <label>Sector <input name="sector" type="search" placeholder="energy"></label>
+            <button class="button primary" type="submit">Filter companies</button>
+            <button class="button ghost" id="resetAdminCompanyFilters" type="button">Reset</button>
+          </form>
+          <p class="student-results-meta" id="adminCompanyMeta"></p>
+          <div class="admin-record-grid" id="adminCompanyList" aria-live="polite"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Admin</span>
+    </div>
+    <p>Admin profile management for ASSconnect students and professional companies.</p>
+  </footer>
+
+  <script src="admin-page.js"></script>
+</body>
+</html>

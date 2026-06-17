@@ -450,6 +450,80 @@ function filterCompanies(companies, query) {
   });
 }
 
+function profileForAdmin(db, profile) {
+  const owner = db.users.find((user) => user.id === profile.userId);
+  return {
+    ...profileForViewer(profile, { id: "admin", role: "admin" }),
+    consentContact: Boolean(profile.consentContact),
+    moderationNote: profile.moderationNote || "",
+    ownerEmail: owner?.email || "",
+    ownerName: owner?.name || "",
+    deletedAt: profile.deletedAt || ""
+  };
+}
+
+function companyForAdmin(db, company) {
+  const owner = db.users.find((user) => user.id === company.userId);
+  return {
+    ...company,
+    accountEmail: owner?.email || "",
+    accountName: owner?.name || "",
+    deletedAt: company.deletedAt || ""
+  };
+}
+
+function ensureAdminManagedUser(db, body, role) {
+  const email = normalizeEmail(body.email || body.accountEmail);
+  if (!email) throw new Error("Account email is required.");
+  let user = db.users.find((item) => item.email === email && !item.deletedAt);
+  if (!user) {
+    user = {
+      id: randomId("user"),
+      name: cleanText(body.name || body.companyName || email),
+      email,
+      role,
+      companyName: role === "professional" ? cleanText(body.companyName) : "",
+      passwordHash: hashPassword(crypto.randomBytes(16).toString("hex")),
+      emailVerified: true,
+      savedProfileIds: [],
+      adminCreated: true,
+      createdAt: nowIso()
+    };
+    db.users.push(user);
+    return user;
+  }
+  if (user.role !== "admin") user.role = role;
+  if (cleanText(body.name || body.companyName)) user.name = cleanText(body.name || body.companyName);
+  if (role === "professional" && cleanText(body.companyName)) user.companyName = cleanText(body.companyName);
+  return user;
+}
+
+function applyAdminProfileFields(profile, body, owner) {
+  const status = ["approved", "pending", "rejected"].includes(body.moderationStatus) ? body.moderationStatus : "approved";
+  Object.assign(profile, {
+    name: cleanText(body.name || owner?.name),
+    programme: cleanText(body.programme),
+    phase: cleanText(body.phase),
+    studyYear: cleanText(body.studyYear),
+    looking: cleanText(body.looking),
+    availability: cleanText(body.availability),
+    availabilityDate: cleanText(body.availabilityDate),
+    location: cleanText(body.location),
+    remotePreference: cleanText(body.remotePreference),
+    languages: splitList(body.languages),
+    skills: splitList(body.skills),
+    bio: cleanMultiline(body.bio),
+    email: normalizeEmail(body.email || owner?.email),
+    phone: cleanText(body.phone),
+    linkedin: cleanText(body.linkedin),
+    visible: boolValue(body.visible),
+    consentContact: boolValue(body.consentContact),
+    moderationStatus: status,
+    moderationNote: cleanText(body.moderationNote),
+    updatedAt: nowIso()
+  });
+}
+
 function filterOpportunities(opportunities, query) {
   const q = cleanText(query.get("q") || query.get("keyword")).toLowerCase();
   const type = cleanText(query.get("type")).toLowerCase();
@@ -868,7 +942,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
     }
 
     if (method === "GET" && pathName === "/api/companies") {
-      const approved = db.companies.filter((company) => company.approved);
+      const approved = db.companies.filter((company) => company.approved && !company.deletedAt);
       json(res, 200, { companies: filterCompanies(approved, parsed.searchParams) });
       return;
     }
@@ -1045,6 +1119,169 @@ async function handleApi(req, res, dbFile, uploadsDir) {
     if (pathName.startsWith("/api/admin/")) {
       const user = requireAuth(db, req, res);
       if (!user || !requireRole(user, ["admin"], res)) return;
+
+      if (method === "GET" && pathName === "/api/admin/profiles") {
+        const status = cleanText(parsed.searchParams.get("status")).toLowerCase();
+        let profiles = db.profiles.filter((item) => !item.deletedAt);
+        if (status && status !== "all") profiles = profiles.filter((item) => String(item.moderationStatus || "").toLowerCase() === status);
+        json(res, 200, { profiles: filterProfiles(profiles, parsed.searchParams).map((profile) => profileForAdmin(db, profile)) });
+        return;
+      }
+
+      if (method === "POST" && pathName === "/api/admin/profiles") {
+        const body = await readBody(req);
+        if (!cleanText(body.name) || !normalizeEmail(body.email)) {
+          json(res, 400, { error: "Student name and email are required." });
+          return;
+        }
+        const owner = ensureAdminManagedUser(db, body, "student");
+        if (db.profiles.some((item) => item.userId === owner.id && !item.deletedAt)) {
+          json(res, 409, { error: "This account already has a student profile. Edit the existing profile instead." });
+          return;
+        }
+        const profile = {
+          id: randomId("profile"),
+          userId: owner.id,
+          photoUrl: "",
+          cvUrl: "",
+          createdAt: nowIso()
+        };
+        applyAdminProfileFields(profile, body, owner);
+        db.profiles.push(profile);
+        audit(db, user.id, "admin.profileCreate", { profileId: profile.id });
+        saveDb(db, dbFile);
+        json(res, 201, { profile: profileForAdmin(db, profile), message: "Student profile created." });
+        return;
+      }
+
+      const adminProfileMatch = pathName.match(/^\/api\/admin\/profiles\/([^/]+)$/);
+      if (adminProfileMatch && method === "PUT") {
+        const body = await readBody(req);
+        const profile = db.profiles.find((item) => item.id === adminProfileMatch[1] && !item.deletedAt);
+        if (!profile) {
+          notFound(res);
+          return;
+        }
+        const owner = db.users.find((item) => item.id === profile.userId);
+        const email = normalizeEmail(body.email);
+        const emailOwner = email ? db.users.find((item) => item.email === email && item.id !== owner?.id && !item.deletedAt) : null;
+        if (emailOwner) {
+          json(res, 409, { error: "Another account already uses this email address." });
+          return;
+        }
+        if (owner) {
+          if (cleanText(body.name)) owner.name = cleanText(body.name);
+          if (email) owner.email = email;
+        }
+        applyAdminProfileFields(profile, body, owner);
+        audit(db, user.id, "admin.profileUpdate", { profileId: profile.id });
+        saveDb(db, dbFile);
+        json(res, 200, { profile: profileForAdmin(db, profile), message: "Student profile updated." });
+        return;
+      }
+
+      if (adminProfileMatch && method === "DELETE") {
+        const profile = db.profiles.find((item) => item.id === adminProfileMatch[1] && !item.deletedAt);
+        if (!profile) {
+          notFound(res);
+          return;
+        }
+        deleteUploadedFile(profile.photoUrl, uploadsDir);
+        deleteUploadedFile(profile.cvUrl, uploadsDir);
+        profile.deletedAt = nowIso();
+        profile.visible = false;
+        profile.moderationStatus = "deleted";
+        audit(db, user.id, "admin.profileDelete", { profileId: profile.id });
+        saveDb(db, dbFile);
+        json(res, 200, { ok: true, message: "Student profile deleted." });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/companies") {
+        const status = cleanText(parsed.searchParams.get("status")).toLowerCase();
+        let companies = db.companies.filter((item) => !item.deletedAt);
+        if (status === "approved") companies = companies.filter((item) => item.approved);
+        if (status === "hidden") companies = companies.filter((item) => !item.approved);
+        json(res, 200, { companies: filterCompanies(companies, parsed.searchParams).map((company) => companyForAdmin(db, company)) });
+        return;
+      }
+
+      if (method === "POST" && pathName === "/api/admin/companies") {
+        const body = await readBody(req);
+        if (!cleanText(body.companyName) || !normalizeEmail(body.accountEmail || body.email)) {
+          json(res, 400, { error: "Company name and account email are required." });
+          return;
+        }
+        const owner = ensureAdminManagedUser(db, { ...body, email: body.accountEmail || body.email }, "professional");
+        if (db.companies.some((item) => item.userId === owner.id && !item.deletedAt)) {
+          json(res, 409, { error: "This account already has a company profile. Edit the existing profile instead." });
+          return;
+        }
+        const company = {
+          id: randomId("company"),
+          userId: owner.id,
+          companyName: cleanText(body.companyName),
+          website: cleanText(body.website),
+          sectors: splitList(body.sectors),
+          description: cleanMultiline(body.description),
+          approved: boolValue(body.approved),
+          createdAt: nowIso(),
+          updatedAt: nowIso()
+        };
+        db.companies.push(company);
+        audit(db, user.id, "admin.companyCreate", { companyId: company.id });
+        saveDb(db, dbFile);
+        json(res, 201, { company: companyForAdmin(db, company), message: "Company profile created." });
+        return;
+      }
+
+      const adminCompanyMatch = pathName.match(/^\/api\/admin\/companies\/([^/]+)$/);
+      if (adminCompanyMatch && method === "PUT") {
+        const body = await readBody(req);
+        const company = db.companies.find((item) => item.id === adminCompanyMatch[1] && !item.deletedAt);
+        if (!company) {
+          notFound(res);
+          return;
+        }
+        Object.assign(company, {
+          companyName: cleanText(body.companyName),
+          website: cleanText(body.website),
+          sectors: splitList(body.sectors),
+          description: cleanMultiline(body.description),
+          approved: boolValue(body.approved),
+          updatedAt: nowIso()
+        });
+        const owner = db.users.find((item) => item.id === company.userId);
+        const accountEmail = normalizeEmail(body.accountEmail || body.email);
+        const emailOwner = accountEmail ? db.users.find((item) => item.email === accountEmail && item.id !== owner?.id && !item.deletedAt) : null;
+        if (emailOwner) {
+          json(res, 409, { error: "Another account already uses this email address." });
+          return;
+        }
+        if (owner) {
+          owner.name = company.companyName;
+          owner.companyName = company.companyName;
+          if (accountEmail) owner.email = accountEmail;
+        }
+        audit(db, user.id, "admin.companyUpdate", { companyId: company.id });
+        saveDb(db, dbFile);
+        json(res, 200, { company: companyForAdmin(db, company), message: "Company profile updated." });
+        return;
+      }
+
+      if (adminCompanyMatch && method === "DELETE") {
+        const company = db.companies.find((item) => item.id === adminCompanyMatch[1] && !item.deletedAt);
+        if (!company) {
+          notFound(res);
+          return;
+        }
+        company.deletedAt = nowIso();
+        company.approved = false;
+        audit(db, user.id, "admin.companyDelete", { companyId: company.id });
+        saveDb(db, dbFile);
+        json(res, 200, { ok: true, message: "Company profile deleted." });
+        return;
+      }
 
       if (method === "GET" && pathName === "/api/admin/summary") {
         json(res, 200, {

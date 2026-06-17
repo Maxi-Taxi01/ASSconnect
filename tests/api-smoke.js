@@ -117,6 +117,77 @@ async function main() {
       email: "admin@assconnect.local",
       password: "Admin123!"
     });
+    const adminCreatedProfile = await request(
+      "POST",
+      "/api/admin/profiles",
+      {
+        name: "Admin Added Student",
+        email: "admin.added.student@example.test",
+        programme: "Nanobiology",
+        phase: "Bachelor",
+        studyYear: "BSc 2",
+        looking: "Internship",
+        availability: "Spring 2027",
+        location: "Delft",
+        remotePreference: "Hybrid",
+        languages: "Dutch, English",
+        skills: "cell culture, Python",
+        bio: "Profile created by admin smoke test.",
+        visible: true,
+        consentContact: true,
+        moderationStatus: "approved"
+      },
+      adminLogin.token
+    );
+    assert.equal(adminCreatedProfile.profile.name, "Admin Added Student");
+    const adminUpdatedProfile = await request(
+      "PUT",
+      `/api/admin/profiles/${adminCreatedProfile.profile.id}`,
+      {
+        ...adminCreatedProfile.profile,
+        location: "Rotterdam",
+        languages: "Dutch, English",
+        skills: "cell culture, Python, microscopy",
+        visible: true,
+        consentContact: true,
+        moderationStatus: "approved"
+      },
+      adminLogin.token
+    );
+    assert.equal(adminUpdatedProfile.profile.location, "Rotterdam");
+    const adminProfiles = await request("GET", "/api/admin/profiles?q=microscopy", undefined, adminLogin.token);
+    assert.ok(adminProfiles.profiles.some((profile) => profile.id === adminCreatedProfile.profile.id));
+    await request("DELETE", `/api/admin/profiles/${adminCreatedProfile.profile.id}`, undefined, adminLogin.token);
+
+    const adminCreatedCompany = await request(
+      "POST",
+      "/api/admin/companies",
+      {
+        companyName: "Admin Company Lab",
+        accountEmail: "admin.company@example.test",
+        website: "https://example.org",
+        sectors: "materials, research",
+        description: "Company profile created by admin smoke test.",
+        approved: true
+      },
+      adminLogin.token
+    );
+    assert.equal(adminCreatedCompany.company.companyName, "Admin Company Lab");
+    const adminUpdatedCompany = await request(
+      "PUT",
+      `/api/admin/companies/${adminCreatedCompany.company.id}`,
+      {
+        ...adminCreatedCompany.company,
+        sectors: "materials, photonics",
+        approved: true
+      },
+      adminLogin.token
+    );
+    assert.ok(adminUpdatedCompany.company.sectors.includes("photonics"));
+    const adminCompanies = await request("GET", "/api/admin/companies?sector=photonics", undefined, adminLogin.token);
+    assert.ok(adminCompanies.companies.some((company) => company.id === adminCreatedCompany.company.id));
+    await request("DELETE", `/api/admin/companies/${adminCreatedCompany.company.id}`, undefined, adminLogin.token);
+
     const queue = await request("GET", "/api/admin/queue", undefined, adminLogin.token);
     const pendingProfile = queue.profiles.find((profile) => profile.name === "Shared Student");
     assert.ok(pendingProfile, "student profile should require moderation");
