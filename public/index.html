@@ -20,7 +20,7 @@
       <a href="#opportunities">Opportunities</a>
       <a href="#profile">Profile</a>
       <a href="#students">Students</a>
-      <a href="#professionals">Professionals</a>
+      <button class="nav-link-button" type="button" data-professionals-open aria-controls="professionals">Professionals</button>
       <a href="#admin">Admin</a>
       <a href="#privacy">Privacy</a>
     </nav>
@@ -293,60 +293,67 @@
       <div class="opportunity-grid" id="opportunityGrid"></div>
     </section>
 
-    <section class="professionals-section" id="professionals">
-      <div class="section-header">
-        <p class="eyebrow">For professionals</p>
-        <h2>Manage company profile, shortlist students and post opportunities.</h2>
-      </div>
-      <div class="two-column">
-        <form class="panel" id="companyForm">
-          <h3>Company profile</h3>
-          <label>Company name <input name="companyName" type="text" required></label>
-          <label>Website <input name="website" type="url"></label>
-          <label>Sectors <input name="sectors" type="text" placeholder="Research, biotech, energy"></label>
-          <label>Description <textarea name="description" rows="4"></textarea></label>
-          <button class="button primary" type="submit">Save company</button>
-        </form>
-        <form class="panel" id="opportunityForm">
-          <h3>Post opportunity</h3>
-          <label>Title <input name="title" type="text" required></label>
-          <label>Organization <input name="organization" type="text"></label>
-          <label>Type
-            <select name="type">
-              <option>Internship</option>
-              <option>Graduation project</option>
-              <option>Career opportunity</option>
-              <option>Job</option>
-              <option>Research collaboration</option>
-            </select>
-          </label>
-          <label>Programme <input name="programme" type="text"></label>
-          <label>Location <input name="location" type="text"></label>
-          <label>Remote preference
-            <select name="remotePreference">
-              <option>On-site</option>
-              <option>Hybrid</option>
-              <option>Remote</option>
-              <option>Flexible</option>
-            </select>
-          </label>
-          <label>Deadline <input name="deadline" type="date"></label>
-          <label>External link <input name="link" type="url"></label>
-          <label>Description <textarea name="description" rows="4"></textarea></label>
-          <button class="button primary" type="submit">Submit for approval</button>
-        </form>
-      </div>
-      <div class="panel">
-        <h3>Shortlisted students</h3>
-        <div class="student-grid compact" id="savedStudentsGrid"></div>
-      </div>
-      <div class="panel">
-        <h3>Company directory</h3>
-        <div class="company-grid" id="companyDirectory"></div>
-      </div>
-      <div class="panel">
-        <h3>Messages</h3>
-        <div id="messagesList" class="message-list"></div>
+    <section class="professionals-section professionals-modal hidden" id="professionals" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="professionalsTitle">
+      <div class="professionals-dialog">
+        <div class="auth-dialog-header">
+          <div>
+            <p class="eyebrow">For professionals</p>
+            <h2 id="professionalsTitle">Manage company profile, shortlist students and post opportunities.</h2>
+          </div>
+          <button class="auth-close" type="button" aria-label="Close professional tools" id="closeProfessionalsPanel">&times;</button>
+        </div>
+        <div class="professional-tools" id="professionalTools">
+          <div class="two-column">
+            <form class="panel" id="companyForm">
+              <h3>Company profile</h3>
+              <label>Company name <input name="companyName" type="text" required></label>
+              <label>Website <input name="website" type="url"></label>
+              <label>Sectors <input name="sectors" type="text" placeholder="Research, biotech, energy"></label>
+              <label>Description <textarea name="description" rows="4"></textarea></label>
+              <button class="button primary" type="submit">Save company</button>
+            </form>
+            <form class="panel" id="opportunityForm">
+              <h3>Post opportunity</h3>
+              <label>Title <input name="title" type="text" required></label>
+              <label>Organization <input name="organization" type="text"></label>
+              <label>Type
+                <select name="type">
+                  <option>Internship</option>
+                  <option>Graduation project</option>
+                  <option>Career opportunity</option>
+                  <option>Job</option>
+                  <option>Research collaboration</option>
+                </select>
+              </label>
+              <label>Programme <input name="programme" type="text"></label>
+              <label>Location <input name="location" type="text"></label>
+              <label>Remote preference
+                <select name="remotePreference">
+                  <option>On-site</option>
+                  <option>Hybrid</option>
+                  <option>Remote</option>
+                  <option>Flexible</option>
+                </select>
+              </label>
+              <label>Deadline <input name="deadline" type="date"></label>
+              <label>External link <input name="link" type="url"></label>
+              <label>Description <textarea name="description" rows="4"></textarea></label>
+              <button class="button primary" type="submit">Submit for approval</button>
+            </form>
+          </div>
+          <div class="panel">
+            <h3>Shortlisted students</h3>
+            <div class="student-grid compact" id="savedStudentsGrid"></div>
+          </div>
+          <div class="panel">
+            <h3>Company directory</h3>
+            <div class="company-grid" id="companyDirectory"></div>
+          </div>
+          <div class="panel">
+            <h3>Messages</h3>
+            <div id="messagesList" class="message-list"></div>
+          </div>
+        </div>
       </div>
     </section>
 

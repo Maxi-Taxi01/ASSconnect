@@ -103,13 +103,20 @@ textarea {
   font-weight: 800;
 }
 
-.site-nav a {
+.site-nav a,
+.site-nav button {
   position: relative;
   color: var(--ink);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.site-nav a::after {
+.site-nav a::after,
+.site-nav button::after {
   position: absolute;
   left: 0;
   bottom: -9px;
@@ -123,7 +130,9 @@ textarea {
 }
 
 .site-nav a:hover::after,
-.site-nav a:focus-visible::after {
+.site-nav a:focus-visible::after,
+.site-nav button:hover::after,
+.site-nav button:focus-visible::after {
   transform: scaleX(1);
 }
 
@@ -399,6 +408,11 @@ section:not(.hero) {
   background: rgba(17, 32, 39, 0.5);
 }
 
+.professionals-section.professionals-modal {
+  padding: clamp(16px, 3vw, 34px);
+  background: rgba(17, 32, 39, 0.5);
+}
+
 .students-section,
 .opportunity-section,
 .admin-section {
@@ -588,6 +602,30 @@ textarea:focus {
 
 .profile-compact-preview {
   align-self: stretch;
+}
+
+.professionals-modal {
+  position: fixed;
+  z-index: 47;
+  inset: 78px 0 0;
+  padding: clamp(16px, 3vw, 34px);
+  overflow-y: auto;
+  background: rgba(17, 32, 39, 0.5);
+}
+
+.professionals-dialog {
+  max-width: 1120px;
+  margin: 0 auto 34px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.professional-tools {
+  display: grid;
+  gap: 18px;
 }
 
 .two-column {
@@ -952,8 +990,10 @@ textarea:focus {
     display: flex;
   }
 
-  .site-nav a {
+  .site-nav a,
+  .site-nav button {
     padding: 12px 4px;
+    text-align: left;
   }
 
   .auth-modal {
@@ -962,6 +1002,15 @@ textarea:focus {
 
   .profile-details-modal {
     inset: 68px 0 0;
+    padding: 12px;
+  }
+
+  .professionals-modal {
+    inset: 68px 0 0;
+    padding: 12px;
+  }
+
+  .professionals-section.professionals-modal {
     padding: 12px;
   }
 

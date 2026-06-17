@@ -428,6 +428,34 @@ function closeProfileDetails() {
   document.body.classList.remove("auth-open");
 }
 
+function openProfessionalsPanel() {
+  if (!state.user || !["professional", "admin"].includes(state.user.role)) {
+    setStatus("Log in as a professional to create a company profile.", true);
+    openAuth("login");
+    return;
+  }
+  closeAuth();
+  closeProfileDetails();
+  const panel = $("#professionals");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  panel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("auth-open");
+  document.body.classList.remove("menu-open");
+  $("#navToggle")?.setAttribute("aria-expanded", "false");
+  requestAnimationFrame(() => {
+    panel.querySelector("input, select, textarea, button")?.focus();
+  });
+}
+
+function closeProfessionalsPanel() {
+  const panel = $("#professionals");
+  if (!panel) return;
+  panel.classList.add("hidden");
+  panel.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("auth-open");
+}
+
 function renderSession() {
   const bar = $("#sessionBar");
   syncAuthActions();
@@ -445,9 +473,9 @@ function renderSession() {
 function roleGate() {
   const role = state.user?.role || "";
   $("#profile").classList.toggle("hidden", Boolean(role && !["student", "admin"].includes(role)));
-  $("#professionals").classList.toggle("hidden", Boolean(role && !["professional", "admin"].includes(role)));
   $("#admin").classList.toggle("hidden", role !== "admin");
   $("#openProfileDetails")?.classList.toggle("hidden", Boolean(state.user && !["student", "admin"].includes(role)));
+  $("#professionalTools")?.classList.toggle("hidden", !["professional", "admin"].includes(role));
 }
 
 function renderPreview() {
@@ -536,6 +564,7 @@ async function logout() {
   state.company = null;
   $("#profileForm").reset();
   closeProfileDetails();
+  closeProfessionalsPanel();
   renderSession();
   roleGate();
   renderPreview();
@@ -1088,11 +1117,12 @@ function bindEvents() {
     const isOpen = document.body.classList.toggle("menu-open");
     $("#navToggle").setAttribute("aria-expanded", String(isOpen));
   });
-  $$(".site-nav a").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
+  $$(".site-nav a, .site-nav button").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeAuth();
       closeProfileDetails();
+      closeProfessionalsPanel();
     }
   });
   $("#loginForm").addEventListener("submit", wrap(login));
@@ -1127,6 +1157,8 @@ function bindEvents() {
     const closeButton = event.target.closest("[data-auth-close]");
     const profileDetailsOpen = event.target.closest("#openProfileDetails");
     const profileDetailsClose = event.target.closest("#closeProfileDetails");
+    const professionalsOpen = event.target.closest("[data-professionals-open]");
+    const professionalsClose = event.target.closest("#closeProfessionalsPanel");
     const contact = event.target.closest("[data-contact]");
     const save = event.target.closest("[data-save]");
     const report = event.target.closest("[data-report]");
@@ -1151,6 +1183,14 @@ function bindEvents() {
     if (profileDetailsClose || event.target === $("#profileDetailsDialog")) {
       event.preventDefault();
       closeProfileDetails();
+    }
+    if (professionalsOpen) {
+      event.preventDefault();
+      openProfessionalsPanel();
+    }
+    if (professionalsClose || event.target === $("#professionals")) {
+      event.preventDefault();
+      closeProfessionalsPanel();
     }
     if (contact) openContact(contact.dataset.contact);
     if (save) await saveStudent(save.dataset.save);

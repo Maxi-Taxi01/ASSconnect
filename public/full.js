@@ -120,6 +120,34 @@
     document.body.classList.remove("auth-open");
   }
 
+  function openProfessionalsPanel() {
+    if (!requireRole("professional", "admin")) {
+      setStatus("Log in as a professional to create a company profile.");
+      openAuth("login");
+      return;
+    }
+    closeAuth();
+    closeProfileDetails();
+    const panel = $("#professionals");
+    if (!panel) return;
+    panel.classList.remove("hidden");
+    panel.setAttribute("aria-hidden", "false");
+    document.body.classList.add("auth-open");
+    document.body.classList.remove("menu-open");
+    $("#navToggle")?.setAttribute("aria-expanded", "false");
+    requestAnimationFrame(() => {
+      panel.querySelector("input, select, textarea, button")?.focus();
+    });
+  }
+
+  function closeProfessionalsPanel() {
+    const panel = $("#professionals");
+    if (!panel) return;
+    panel.classList.add("hidden");
+    panel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-open");
+  }
+
   function formObject(form) {
     return Object.fromEntries(new FormData(form).entries());
   }
@@ -189,6 +217,7 @@
       state.user = null;
       localStorage.removeItem(tokenKey);
       closeProfileDetails();
+      closeProfessionalsPanel();
       await refreshAll();
       setStatus("Logged out.");
     });
@@ -859,13 +888,15 @@
       const isOpen = document.body.classList.toggle("menu-open");
       $("#navToggle")?.setAttribute("aria-expanded", String(Boolean(isOpen)));
     });
-    $$(".site-nav a").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
+    $$(".site-nav a, .site-nav button").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
     document.addEventListener("click", (event) => {
       const openButton = event.target.closest("[data-auth-open]");
       const tabButton = event.target.closest("[data-auth-tab]");
       const closeButton = event.target.closest("[data-auth-close]");
       const profileDetailsOpen = event.target.closest("#openProfileDetails");
       const profileDetailsClose = event.target.closest("#closeProfileDetails");
+      const professionalsOpen = event.target.closest("[data-professionals-open]");
+      const professionalsClose = event.target.closest("#closeProfessionalsPanel");
       if (openButton) {
         event.preventDefault();
         openAuth(openButton.dataset.authOpen);
@@ -886,11 +917,20 @@
         event.preventDefault();
         closeProfileDetails();
       }
+      if (professionalsOpen) {
+        event.preventDefault();
+        openProfessionalsPanel();
+      }
+      if (professionalsClose || event.target === $("#professionals")) {
+        event.preventDefault();
+        closeProfessionalsPanel();
+      }
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeAuth();
         closeProfileDetails();
+        closeProfessionalsPanel();
       }
     });
   }
