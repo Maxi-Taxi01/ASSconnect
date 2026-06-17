@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#profilePage">Skip to profile editor</a>
+  <header class="site-header">
+    <a class="brand" href="index.html?mode=server#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html?mode=server#opportunities">Opportunities</a>
+      <a href="index.html?mode=server#about">About</a>
+      <a href="profile.html?mode=server" aria-current="page">Profile</a>
+      <a href="index.html?mode=server#students">Students</a>
+      <a href="index.html?mode=server">Professionals</a>
+      <a href="index.html?mode=server#admin">Admin</a>
+      <a href="index.html?mode=server#privacy">Privacy</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+
+  <main class="profile-page-main" id="profilePage">
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading profile...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="profile-page-section">
+      <div class="section-header">
+        <p class="eyebrow">Your ASSconnect profile</p>
+        <h1>View and edit your student profile.</h1>
+        <p class="section-intro">Keep your core details, contact preferences, skills, photo and CV up to date. Saved changes are submitted for admin approval before public listing.</p>
+      </div>
+
+      <div class="panel signed-out-panel hidden" id="signedOutState">
+        <h2>Log in to edit your profile</h2>
+        <p class="hint">Use your ASSconnect student account to view and update your profile.</p>
+        <form class="inline-login-form" id="profileLoginForm">
+          <label>Email <input name="email" type="email" required autocomplete="email"></label>
+          <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+          <button class="button primary" type="submit">Log in</button>
+        </form>
+        <p class="hint">Need an account? Use the Sign up button on the homepage.</p>
+      </div>
+
+      <div class="panel signed-out-panel hidden" id="roleBlockedState">
+        <h2>Student profile access</h2>
+        <p class="hint">This page is for student profiles. Professional accounts can manage their company profile from the Professionals area on the homepage.</p>
+        <a class="button ghost" href="index.html?mode=server">Back to homepage</a>
+      </div>
+
+      <div class="profile-page-layout hidden" id="profileWorkspace">
+        <aside class="preview-card profile-page-preview" id="profilePreview" aria-label="Profile preview"></aside>
+
+        <form class="panel profile-page-form" id="profileForm">
+          <div class="profile-form-section">
+            <h2>Core details</h2>
+            <div class="form-grid">
+              <label>Full name <input name="name" type="text" required></label>
+              <label>Email <input name="email" type="email" required></label>
+              <label>Programme
+                <select name="programme" required>
+                  <option value="">Select programme</option>
+                  <option>Applied Physics</option>
+                  <option>Life Science & Technology</option>
+                  <option>Molecular Science & Technology</option>
+                  <option>Nanobiology</option>
+                  <option>Chemical Engineering</option>
+                  <option>Other Applied Sciences</option>
+                </select>
+              </label>
+              <label>Study phase
+                <select name="phase">
+                  <option>Bachelor</option>
+                  <option>Master</option>
+                  <option>Graduating</option>
+                  <option>PhD orientation</option>
+                </select>
+              </label>
+              <label>Study year <input name="studyYear" type="text" placeholder="BSc 3, MSc 1, graduating"></label>
+              <label>Looking for
+                <select name="looking">
+                  <option>Internship</option>
+                  <option>Graduation project</option>
+                  <option>Career opportunity</option>
+                  <option>Job</option>
+                  <option>Research collaboration</option>
+                </select>
+              </label>
+              <label>Availability <input name="availability" type="text" placeholder="From September 2026, 24 h/week"></label>
+              <label>Availability date <input name="availabilityDate" type="date"></label>
+            </div>
+          </div>
+
+          <div class="profile-form-section">
+            <h2>Extra details</h2>
+            <div class="form-grid">
+              <label>Location <input name="location" type="text" placeholder="Delft, Leiden, remote"></label>
+              <label>Remote preference
+                <select name="remotePreference">
+                  <option>On-site</option>
+                  <option>Hybrid</option>
+                  <option>Remote</option>
+                  <option>Flexible</option>
+                </select>
+              </label>
+              <label>Languages <input name="languages" type="text" placeholder="Dutch, English"></label>
+              <label>Phone <input name="phone" type="tel"></label>
+              <label>LinkedIn <input name="linkedin" type="url" placeholder="https://linkedin.com/in/..."></label>
+              <label>Skills and methods <input name="skills" type="text" placeholder="Python, microscopy, process design"></label>
+            </div>
+            <label>Short bio <textarea name="bio" rows="5" placeholder="A concise summary for companies, recruiters and research groups."></textarea></label>
+          </div>
+
+          <div class="profile-form-section">
+            <h2>Files and consent</h2>
+            <div class="form-grid">
+              <label>Profile photo <input name="photo" type="file" accept="image/*"></label>
+              <label>CV upload <input name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf"></label>
+            </div>
+            <label class="check-line"><input name="visible" type="checkbox" checked> Visible in student search</label>
+            <label class="check-line"><input name="consentContact" type="checkbox"> I consent to ASSconnect storing my profile and showing my selected contact information to logged-in professionals.</label>
+            <p class="hint" id="profileFileStatus">Photo and CV uploads are stored on the ASSconnect server.</p>
+          </div>
+
+          <div class="form-actions">
+            <button class="button primary" type="submit">Save profile</button>
+            <button class="button ghost" id="exportProfile" type="button">Export my data</button>
+            <button class="button danger" id="deleteProfile" type="button">Delete profile</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Profile</span>
+    </div>
+    <p>Student profile workspace for ASSconnect opportunities.</p>
+  </footer>
+
+  <script src="profile-page.js"></script>
+</body>
+</html>

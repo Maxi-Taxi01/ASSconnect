@@ -350,8 +350,7 @@ function requireRole(user, roles, res) {
 function profileForViewer(profile, viewer) {
   const canSeePrivate =
     viewer &&
-    (viewer.role === "admin" || viewer.role === "professional" || viewer.id === profile.userId) &&
-    profile.consentContact;
+    (viewer.id === profile.userId || viewer.role === "admin" || (viewer.role === "professional" && profile.consentContact));
   const base = {
     id: profile.id,
     userId: profile.userId,
