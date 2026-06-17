@@ -16,11 +16,6 @@
       <img src="assets/Icon.png" alt="ASSconnect logo">
       <span>ASSconnect</span>
     </a>
-    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
     <nav class="site-nav" id="siteNav" aria-label="Primary navigation">
       <a href="#opportunities">Opportunities</a>
       <a href="#profile">Profile</a>
@@ -29,33 +24,34 @@
       <a href="#admin">Admin</a>
       <a href="#privacy">Privacy</a>
     </nav>
+    <div class="header-actions" id="authNavActions">
+      <button class="button ghost nav-auth-button" type="button" data-auth-open="login">Log in</button>
+      <button class="button primary nav-auth-button" type="button" data-auth-open="register">Sign up</button>
+    </div>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </header>
 
-  <main>
-    <section class="hero" id="home">
-      <div class="hero-copy">
-        <p class="eyebrow">Applied Sciences Connect</p>
-        <h1>Meet the people and projects shaping your next step.</h1>
-        <p class="hero-text">Connect students, researchers and professionals for internships, graduation projects, career opportunities and jobs.</p>
-        <div class="hero-actions">
-          <a class="button primary" href="#auth">Start matching</a>
-          <a class="button secondary" href="#students">Search students</a>
+  <section class="auth-section auth-modal hidden" id="auth" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="authTitle">
+    <div class="auth-dialog">
+      <div class="auth-dialog-header">
+        <div>
+          <p class="eyebrow">Accounts</p>
+          <h2 id="authTitle">Account access</h2>
         </div>
+        <button class="auth-close" type="button" aria-label="Close account panel" data-auth-close>&times;</button>
       </div>
-    </section>
-
-    <section class="status-strip" aria-live="polite" role="status">
-      <p id="appStatus">Loading ASSconnect...</p>
-      <div class="session-bar" id="sessionBar"></div>
-    </section>
-
-    <section class="auth-section" id="auth">
-      <div class="section-header">
-        <p class="eyebrow">Accounts</p>
-        <h2>Sign in, register, verify email, or recover access.</h2>
+      <div class="auth-tabs" role="tablist" aria-label="Account actions">
+        <button class="auth-tab is-active" id="authTabLogin" type="button" role="tab" aria-selected="true" aria-controls="loginForm" data-auth-tab="login">Log in</button>
+        <button class="auth-tab" id="authTabRegister" type="button" role="tab" aria-selected="false" aria-controls="registerForm" data-auth-tab="register">Create account</button>
+        <button class="auth-tab" id="authTabVerify" type="button" role="tab" aria-selected="false" aria-controls="verifyForm" data-auth-tab="verify">Email verification</button>
+        <button class="auth-tab" id="authTabReset" type="button" role="tab" aria-selected="false" aria-controls="resetForm" data-auth-tab="reset">Password reset</button>
       </div>
       <div class="auth-grid">
-        <form class="panel" id="loginForm">
+        <form class="panel auth-panel is-active" id="loginForm" role="tabpanel" aria-labelledby="authTabLogin" data-auth-panel="login">
           <h3>Log in</h3>
           <label>Email <input name="email" type="email" required autocomplete="email"></label>
           <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
@@ -65,7 +61,7 @@
           <p class="hint">Demo student: student@assconnect.local / Student123!</p>
         </form>
 
-        <form class="panel" id="registerForm">
+        <form class="panel auth-panel" id="registerForm" role="tabpanel" aria-labelledby="authTabRegister" data-auth-panel="register">
           <h3>Create account</h3>
           <label>Role
             <select name="role" required>
@@ -80,7 +76,7 @@
           <button class="button primary" type="submit">Register</button>
         </form>
 
-        <form class="panel" id="verifyForm">
+        <form class="panel auth-panel" id="verifyForm" role="tabpanel" aria-labelledby="authTabVerify" data-auth-panel="verify">
           <h3>Email verification</h3>
           <label>Email <input name="email" type="email" required></label>
           <label>Verification code <input name="code" type="text" inputmode="numeric" required></label>
@@ -88,7 +84,7 @@
           <p class="hint">For this local MVP, codes are shown after registration instead of being emailed.</p>
         </form>
 
-        <form class="panel" id="resetForm">
+        <form class="panel auth-panel" id="resetForm" role="tabpanel" aria-labelledby="authTabReset" data-auth-panel="reset">
           <h3>Password reset</h3>
           <label>Email <input name="email" type="email" required></label>
           <button class="button ghost" name="request" value="request" type="submit">Request reset code</button>
@@ -97,6 +93,25 @@
           <button class="button ghost" name="reset" value="reset" type="submit">Reset password</button>
         </form>
       </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="hero-copy">
+        <p class="eyebrow">Applied Sciences Connect</p>
+        <h1>Meet the people and projects shaping your next step.</h1>
+        <p class="hero-text">Connect students, researchers and professionals for internships, graduation projects, career opportunities and jobs.</p>
+        <div class="hero-actions">
+          <button class="button primary" type="button" data-auth-open="register">Start matching</button>
+          <a class="button secondary" href="#students">Search students</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading ASSconnect...</p>
+      <div class="session-bar" id="sessionBar"></div>
     </section>
 
     <section class="profile-section" id="profile">

@@ -375,10 +375,55 @@ function splitSkills(value) {
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function normalizeAuthMode(mode) {
+  return ["login", "register", "verify", "reset"].includes(mode) ? mode : "login";
+}
+
+function setAuthMode(mode = "login") {
+  const activeMode = normalizeAuthMode(mode);
+  $$(".auth-tab").forEach((tab) => {
+    const isActive = tab.dataset.authTab === activeMode;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+  $$(".auth-panel").forEach((panel) => {
+    const isActive = panel.dataset.authPanel === activeMode;
+    panel.classList.toggle("is-active", isActive);
+    panel.toggleAttribute("hidden", !isActive);
+  });
+}
+
+function openAuth(mode = "login") {
+  setAuthMode(mode);
+  const modal = $("#auth");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("auth-open");
+  document.body.classList.remove("menu-open");
+  $("#navToggle")?.setAttribute("aria-expanded", "false");
+  requestAnimationFrame(() => {
+    modal.querySelector(".auth-panel.is-active input, .auth-panel.is-active select, .auth-panel.is-active button")?.focus();
+  });
+}
+
+function closeAuth() {
+  const modal = $("#auth");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("auth-open");
+}
+
+function syncAuthActions() {
+  $("#authNavActions")?.classList.toggle("hidden", Boolean(state.user));
+}
+
 function renderSession() {
   const bar = $("#sessionBar");
+  syncAuthActions();
   if (!state.user) {
-    bar.innerHTML = `<a class="button secondary" href="#auth">Log in</a>`;
+    bar.innerHTML = `<span>Not logged in.</span>`;
     return;
   }
   bar.innerHTML = `
@@ -468,6 +513,7 @@ async function login(event) {
   db.sessionUserId = user.id;
   db.analytics.push({ id: id("event"), event: "login", userId: user.id, createdAt: now() });
   saveStore();
+  closeAuth();
   refreshCurrentData();
   setStatus(user.verified ? "Logged in." : "Logged in. Please verify your email.");
 }
@@ -523,6 +569,7 @@ async function register(event) {
   saveStore();
   $("#verifyForm").elements.email.value = user.email;
   $("#verifyForm").elements.code.value = verificationCode;
+  setAuthMode("verify");
   setStatus(`Static demo account created. Verification code: ${verificationCode}`);
 }
 
@@ -534,6 +581,7 @@ async function verifyEmail(event) {
   user.verified = true;
   user.verificationCode = "";
   saveStore();
+  setAuthMode("login");
   setStatus("Email verified in local browser storage.");
 }
 
@@ -558,6 +606,7 @@ async function resetPassword(event) {
   user.password = data.newPassword;
   user.resetCode = "";
   saveStore();
+  setAuthMode("login");
   setStatus("Password reset in local browser storage.");
 }
 
@@ -1031,6 +1080,9 @@ function bindEvents() {
     $("#navToggle").setAttribute("aria-expanded", String(isOpen));
   });
   $$(".site-nav a").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAuth();
+  });
   $("#loginForm").addEventListener("submit", wrap(login));
   $("#registerForm").addEventListener("submit", wrap(register));
   $("#verifyForm").addEventListener("submit", wrap(verifyEmail));
@@ -1058,11 +1110,26 @@ function bindEvents() {
   $("#restoreBackup").addEventListener("change", wrap(restoreBackup));
   $("#deleteAccount").addEventListener("click", wrap(deleteAccount));
   document.addEventListener("click", wrap(async (event) => {
+    const openButton = event.target.closest("[data-auth-open]");
+    const tabButton = event.target.closest("[data-auth-tab]");
+    const closeButton = event.target.closest("[data-auth-close]");
     const contact = event.target.closest("[data-contact]");
     const save = event.target.closest("[data-save]");
     const report = event.target.closest("[data-report]");
     const adminStatus = event.target.closest("[data-admin-status]");
     const analytics = event.target.closest("[data-analytics]");
+    if (openButton) {
+      event.preventDefault();
+      openAuth(openButton.dataset.authOpen);
+    }
+    if (tabButton) {
+      event.preventDefault();
+      setAuthMode(tabButton.dataset.authTab);
+    }
+    if (closeButton || event.target === $("#auth")) {
+      event.preventDefault();
+      closeAuth();
+    }
     if (contact) openContact(contact.dataset.contact);
     if (save) await saveStudent(save.dataset.save);
     if (report) await reportStudent(report.dataset.report);

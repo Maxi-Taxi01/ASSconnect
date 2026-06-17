@@ -52,6 +52,50 @@
     if (element) element.classList.toggle("hidden", hidden);
   }
 
+  function normalizeAuthMode(mode) {
+    return ["login", "register", "verify", "reset"].includes(mode) ? mode : "login";
+  }
+
+  function setAuthMode(mode = "login") {
+    const activeMode = normalizeAuthMode(mode);
+    $$(".auth-tab").forEach((tab) => {
+      const isActive = tab.dataset.authTab === activeMode;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+    });
+    $$(".auth-panel").forEach((panel) => {
+      const isActive = panel.dataset.authPanel === activeMode;
+      panel.classList.toggle("is-active", isActive);
+      panel.toggleAttribute("hidden", !isActive);
+    });
+  }
+
+  function openAuth(mode = "login") {
+    setAuthMode(mode);
+    const modal = $("#auth");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("auth-open");
+    document.body.classList.remove("menu-open");
+    $("#navToggle")?.setAttribute("aria-expanded", "false");
+    requestAnimationFrame(() => {
+      modal.querySelector(".auth-panel.is-active input, .auth-panel.is-active select, .auth-panel.is-active button")?.focus();
+    });
+  }
+
+  function closeAuth() {
+    const modal = $("#auth");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-open");
+  }
+
+  function syncAuthActions() {
+    $("#authNavActions")?.classList.toggle("hidden", Boolean(state.user));
+  }
+
   function formObject(form) {
     return Object.fromEntries(new FormData(form).entries());
   }
@@ -102,6 +146,7 @@
   function renderSession() {
     const bar = $("#sessionBar");
     if (!bar) return;
+    syncAuthActions();
     if (!state.user) {
       bar.innerHTML = `<span>Not logged in</span>`;
       return;
@@ -496,6 +541,7 @@
         state.token = result.token;
         state.user = result.user;
         localStorage.setItem(tokenKey, state.token);
+        closeAuth();
         await refreshAll();
         setStatus("Logged in.");
       } catch (error) {
@@ -506,7 +552,14 @@
     $("#registerForm")?.addEventListener("submit", async (event) => {
       event.preventDefault();
       try {
-        const result = await api("/api/auth/register", { method: "POST", body: formObject(event.currentTarget) });
+        const data = formObject(event.currentTarget);
+        const result = await api("/api/auth/register", { method: "POST", body: data });
+        const verifyForm = $("#verifyForm");
+        if (verifyForm) {
+          verifyForm.elements.email.value = result.user?.email || data.email || "";
+          if (result.devCode) verifyForm.elements.code.value = result.devCode;
+        }
+        setAuthMode("verify");
         setStatus(result.devCode ? `${result.message} Demo code: ${result.devCode}` : result.message);
       } catch (error) {
         setStatus(error.message);
@@ -517,6 +570,7 @@
       event.preventDefault();
       try {
         const result = await api("/api/auth/verify", { method: "POST", body: formObject(event.currentTarget) });
+        setAuthMode("login");
         setStatus(result.message);
       } catch (error) {
         setStatus(error.message);
@@ -530,12 +584,14 @@
       try {
         if (submitter === "request") {
           const result = await api("/api/auth/request-reset", { method: "POST", body: { email: data.email } });
+          if (result.devCode) event.currentTarget.elements.code.value = result.devCode;
           setStatus(result.devCode ? `${result.message} Demo code: ${result.devCode}` : result.message);
         } else {
           const result = await api("/api/auth/reset", {
             method: "POST",
             body: { email: data.email, code: data.code, newPassword: data.newPassword }
           });
+          setAuthMode("login");
           setStatus(result.message);
         }
       } catch (error) {
@@ -776,9 +832,29 @@
 
   function bindNavigation() {
     $("#navToggle")?.addEventListener("click", () => {
-      const nav = $("#siteNav");
-      const isOpen = nav?.classList.toggle("open");
+      const isOpen = document.body.classList.toggle("menu-open");
       $("#navToggle")?.setAttribute("aria-expanded", String(Boolean(isOpen)));
+    });
+    $$(".site-nav a").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
+    document.addEventListener("click", (event) => {
+      const openButton = event.target.closest("[data-auth-open]");
+      const tabButton = event.target.closest("[data-auth-tab]");
+      const closeButton = event.target.closest("[data-auth-close]");
+      if (openButton) {
+        event.preventDefault();
+        openAuth(openButton.dataset.authOpen);
+      }
+      if (tabButton) {
+        event.preventDefault();
+        setAuthMode(tabButton.dataset.authTab);
+      }
+      if (closeButton || event.target === $("#auth")) {
+        event.preventDefault();
+        closeAuth();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeAuth();
     });
   }
 
