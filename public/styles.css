@@ -397,6 +397,7 @@ section:not(.hero) {
 }
 
 .auth-section,
+.about-section,
 .profile-section,
 .professionals-section,
 .privacy-section {
@@ -450,6 +451,78 @@ section:not(.hero) {
 
 .panel {
   padding: 22px;
+}
+
+.about-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 22px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.about-intro p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.process-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.process-list div {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.process-list strong {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--brand-red);
+  font-family: "Mulish", Arial, sans-serif;
+}
+
+.process-list span {
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.story-card {
+  min-height: 280px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #f8fafb);
+  box-shadow: 0 10px 28px rgba(17, 32, 39, 0.06);
+}
+
+.story-card p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.story-meta {
+  margin: 0 0 12px;
+  color: var(--brand-red) !important;
+  font-family: "Mulish", Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .panel h3,
@@ -937,6 +1010,7 @@ textarea:focus {
 
 @media (max-width: 920px) {
   .feature-grid,
+  .about-layout,
   .source-grid,
   .opportunity-grid,
   .student-grid,
@@ -947,6 +1021,10 @@ textarea:focus {
 
   .preview-card {
     position: static;
+  }
+
+  .story-grid {
+    grid-template-columns: 1fr;
   }
 }
 
