@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Professionals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#professionalsPage">Skip to company profiles</a>
+  <header class="site-header">
+    <a class="brand" href="index.html?mode=server#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html?mode=server#opportunities">Opportunities</a>
+      <a href="index.html?mode=server#about">About</a>
+      <a href="profile.html?mode=server">Profile</a>
+      <a href="students.html?mode=server">Students</a>
+      <a href="professionals.html?mode=server" aria-current="page">Professionals</a>
+      <a href="index.html?mode=server#admin">Admin</a>
+      <a href="index.html?mode=server#privacy">Privacy</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+
+  <main class="professionals-page-main" id="professionalsPage">
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading company profiles...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="professionals-page-section">
+      <div class="section-header">
+        <p class="eyebrow">Company profiles</p>
+        <h1>Browse professional company profiles.</h1>
+        <p class="section-intro">Filter companies by name, sector, keyword, website or description to find possible internship, graduation project, career and job partners.</p>
+      </div>
+
+      <form class="directory-toolbar professionals-page-filters" id="companyFilters">
+        <label>Keyword <input name="q" type="search" placeholder="research, biotech, energy..."></label>
+        <label>Company name <input name="company" type="search" placeholder="Applied Science Partners"></label>
+        <label>Sector <input name="sector" type="search" placeholder="biotech"></label>
+        <label>Website <input name="website" type="search" placeholder="example.com"></label>
+        <label>Description <input name="description" type="search" placeholder="research assignments"></label>
+        <button class="button primary" type="submit">Filter companies</button>
+        <button class="button ghost" id="resetCompanyFilters" type="button">Reset</button>
+      </form>
+
+      <div class="directory-summary">
+        <p class="student-results-meta" id="companyResultsMeta"></p>
+        <p class="hint">Showing approved company profiles.</p>
+      </div>
+
+      <div class="company-grid professionals-page-grid" id="companyDirectory" aria-live="polite"></div>
+
+      <div class="professionals-page-tools">
+        <div class="panel signed-out-panel" id="professionalSignedOutState">
+          <h2>Log in to manage a company profile</h2>
+          <p class="hint">Use a professional or admin account to create or update a company profile, post opportunities, view saved students and read messages.</p>
+          <form class="inline-login-form" id="professionalLoginForm">
+            <label>Email <input name="email" type="email" required autocomplete="email"></label>
+            <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+            <button class="button primary" type="submit">Log in</button>
+          </form>
+          <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
+        </div>
+
+        <div class="panel signed-out-panel hidden" id="professionalRoleBlockedState">
+          <h2>Professional account needed</h2>
+          <p class="hint">Student accounts can browse companies here. Company profile and opportunity tools are available to professional and admin accounts.</p>
+          <a class="button ghost" href="students.html?mode=server">Back to students</a>
+        </div>
+
+        <div class="professional-tools hidden" id="professionalTools">
+          <div class="section-header compact-section-header">
+            <p class="eyebrow">For professionals</p>
+            <h2>Manage your company profile and opportunities.</h2>
+          </div>
+          <div class="two-column">
+            <form class="panel" id="companyForm">
+              <h3>Company profile</h3>
+              <label>Company name <input name="companyName" type="text" required></label>
+              <label>Website <input name="website" type="url"></label>
+              <label>Sectors <input name="sectors" type="text" placeholder="Research, biotech, energy"></label>
+              <label>Description <textarea name="description" rows="4"></textarea></label>
+              <button class="button primary" type="submit">Save company</button>
+            </form>
+
+            <form class="panel" id="opportunityForm">
+              <h3>Post opportunity</h3>
+              <label>Title <input name="title" type="text" required></label>
+              <label>Organization <input name="organization" type="text"></label>
+              <label>Type
+                <select name="type">
+                  <option>Internship</option>
+                  <option>Graduation project</option>
+                  <option>Career opportunity</option>
+                  <option>Job</option>
+                  <option>Research collaboration</option>
+                </select>
+              </label>
+              <label>Programme <input name="programme" type="text"></label>
+              <label>Location <input name="location" type="text"></label>
+              <label>Remote preference
+                <select name="remotePreference">
+                  <option>On-site</option>
+                  <option>Hybrid</option>
+                  <option>Remote</option>
+                  <option>Flexible</option>
+                </select>
+              </label>
+              <label>Deadline <input name="deadline" type="date"></label>
+              <label>External link <input name="link" type="url"></label>
+              <label>Description <textarea name="description" rows="4"></textarea></label>
+              <button class="button primary" type="submit">Submit for approval</button>
+            </form>
+          </div>
+
+          <div class="two-column">
+            <div class="panel">
+              <h3>Shortlisted students</h3>
+              <div class="student-grid compact" id="savedStudentsGrid"></div>
+            </div>
+            <div class="panel">
+              <h3>Messages</h3>
+              <div id="messagesList" class="message-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Professionals</span>
+    </div>
+    <p>Company profile directory and professional workspace for ASSconnect opportunities.</p>
+  </footer>
+
+  <script src="professionals-page.js"></script>
+</body>
+</html>

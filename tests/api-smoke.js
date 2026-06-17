@@ -170,6 +170,8 @@ async function main() {
       },
       professionalLogin.token
     );
+    const companies = await request("GET", "/api/companies?q=server&sector=energy");
+    assert.ok(companies.companies.some((company) => company.companyName === "Server Test Lab"));
 
     const opportunity = await request(
       "POST",

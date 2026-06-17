@@ -426,6 +426,30 @@ function filterProfiles(profiles, query) {
   });
 }
 
+function filterCompanies(companies, query) {
+  const q = cleanText(query.get("q") || query.get("keyword")).toLowerCase();
+  const companyName = cleanText(query.get("company") || query.get("companyName")).toLowerCase();
+  const sector = cleanText(query.get("sector")).toLowerCase();
+  const website = cleanText(query.get("website")).toLowerCase();
+  const description = cleanText(query.get("description")).toLowerCase();
+  return companies.filter((company) => {
+    const searchable = [
+      company.companyName,
+      company.website,
+      company.description,
+      ...(company.sectors || [])
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (q && !searchable.includes(q)) return false;
+    if (companyName && !String(company.companyName || "").toLowerCase().includes(companyName)) return false;
+    if (sector && !(company.sectors || []).join(" ").toLowerCase().includes(sector)) return false;
+    if (website && !String(company.website || "").toLowerCase().includes(website)) return false;
+    if (description && !String(company.description || "").toLowerCase().includes(description)) return false;
+    return true;
+  });
+}
+
 function filterOpportunities(opportunities, query) {
   const q = cleanText(query.get("q") || query.get("keyword")).toLowerCase();
   const type = cleanText(query.get("type")).toLowerCase();
@@ -844,7 +868,8 @@ async function handleApi(req, res, dbFile, uploadsDir) {
     }
 
     if (method === "GET" && pathName === "/api/companies") {
-      json(res, 200, { companies: db.companies.filter((company) => company.approved) });
+      const approved = db.companies.filter((company) => company.approved);
+      json(res, 200, { companies: filterCompanies(approved, parsed.searchParams) });
       return;
     }
 
