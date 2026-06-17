@@ -382,12 +382,20 @@ function profileForViewer(profile, viewer) {
 }
 
 function filterProfiles(profiles, query) {
+  const option = (name) => {
+    const value = cleanText(query.get(name)).toLowerCase();
+    return value === "all" || value === "any" ? "" : value;
+  };
   const q = cleanText(query.get("q")).toLowerCase();
-  const programme = cleanText(query.get("programme")).toLowerCase();
-  const looking = cleanText(query.get("looking")).toLowerCase();
+  const programme = option("programme");
+  const phase = option("phase");
+  const looking = option("looking");
   const skill = cleanText(query.get("skill")).toLowerCase();
+  const language = cleanText(query.get("language")).toLowerCase();
+  const studyYear = cleanText(query.get("studyYear")).toLowerCase();
+  const availability = cleanText(query.get("availability")).toLowerCase();
   const location = cleanText(query.get("location")).toLowerCase();
-  const remote = cleanText(query.get("remote")).toLowerCase();
+  const remote = option("remote");
   return profiles.filter((profile) => {
     const searchable = [
       profile.name,
@@ -405,9 +413,13 @@ function filterProfiles(profiles, query) {
       .join(" ")
       .toLowerCase();
     if (q && !searchable.includes(q)) return false;
-    if (programme && profile.programme.toLowerCase() !== programme) return false;
-    if (looking && profile.looking.toLowerCase() !== looking) return false;
+    if (programme && String(profile.programme || "").toLowerCase() !== programme) return false;
+    if (phase && String(profile.phase || "").toLowerCase() !== phase) return false;
+    if (looking && String(profile.looking || "").toLowerCase() !== looking) return false;
+    if (studyYear && !String(profile.studyYear || "").toLowerCase().includes(studyYear)) return false;
+    if (availability && !`${profile.availability || ""} ${profile.availabilityDate || ""}`.toLowerCase().includes(availability)) return false;
     if (skill && !(profile.skills || []).join(" ").toLowerCase().includes(skill)) return false;
+    if (language && !(profile.languages || []).join(" ").toLowerCase().includes(language)) return false;
     if (location && !String(profile.location || "").toLowerCase().includes(location)) return false;
     if (remote && String(profile.remotePreference || "").toLowerCase() !== remote) return false;
     return true;
@@ -706,8 +718,9 @@ async function handleApi(req, res, dbFile, uploadsDir) {
 
     if (method === "GET" && pathName === "/api/students") {
       const viewer = getAuthUser(db, req);
-      const visibleProfiles = db.profiles.filter(
-        (profile) => profile.visible && !profile.deletedAt && profile.moderationStatus === "approved"
+      const includeAll = viewer?.role === "admin" && parsed.searchParams.get("scope") === "all";
+      const visibleProfiles = db.profiles.filter((profile) =>
+        includeAll ? !profile.deletedAt : profile.visible && !profile.deletedAt && profile.moderationStatus === "approved"
       );
       const profiles = filterProfiles(visibleProfiles, parsed.searchParams).map((profile) => profileForViewer(profile, viewer));
       json(res, 200, { profiles });

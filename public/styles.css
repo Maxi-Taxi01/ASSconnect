@@ -288,11 +288,21 @@ section:not(.hero) {
   background: var(--soft);
 }
 
+.students-page-main {
+  padding-top: 78px;
+  background: var(--soft);
+}
+
 .profile-page-section {
   background: #fff;
 }
 
-.profile-page-section h1 {
+.students-page-section {
+  background: var(--soft);
+}
+
+.profile-page-section h1,
+.students-page-section h1 {
   max-width: 820px;
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.04;
@@ -344,6 +354,27 @@ section:not(.hero) {
   gap: 14px;
   align-items: end;
   margin-top: 20px;
+}
+
+.students-page-filters {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.directory-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 1180px;
+  margin: 0 auto 16px;
+}
+
+.directory-summary .student-results-meta,
+.directory-summary .hint {
+  margin: 0;
+}
+
+.students-page-grid {
+  align-items: stretch;
 }
 
 .auth-modal {
@@ -1193,6 +1224,7 @@ textarea:focus {
   .form-grid,
   .inline-login-form,
   .directory-toolbar,
+  .students-page-filters,
   .admin-grid,
   .stat-grid,
   .company-grid,
@@ -1208,6 +1240,11 @@ textarea:focus {
 
   .session-bar {
     justify-content: flex-start;
+  }
+
+  .directory-summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

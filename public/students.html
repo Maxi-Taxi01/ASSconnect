@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASSconnect Students</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#studentsPage">Skip to student profiles</a>
+  <header class="site-header">
+    <a class="brand" href="index.html?mode=server#home" aria-label="ASSconnect home">
+      <img src="assets/Icon.png" alt="ASSconnect logo">
+      <span>ASSconnect</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html?mode=server#opportunities">Opportunities</a>
+      <a href="index.html?mode=server#about">About</a>
+      <a href="profile.html?mode=server">Profile</a>
+      <a href="students.html?mode=server" aria-current="page">Students</a>
+      <a href="index.html?mode=server">Professionals</a>
+      <a href="index.html?mode=server#admin">Admin</a>
+      <a href="index.html?mode=server#privacy">Privacy</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+
+  <main class="students-page-main" id="studentsPage">
+    <section class="status-strip" aria-live="polite" role="status">
+      <p id="appStatus">Loading student profiles...</p>
+      <div class="session-bar" id="sessionBar"></div>
+    </section>
+
+    <section class="students-page-section">
+      <div class="section-header">
+        <p class="eyebrow">Student profiles</p>
+        <h1>Browse created student profiles.</h1>
+        <p class="section-intro">Filter by programme, study phase, opportunity type, skills, language, location, remote preference and availability.</p>
+      </div>
+
+      <form class="directory-toolbar students-page-filters" id="studentFilters">
+        <label>Keyword <input name="q" type="search" placeholder="quantum, biotech, Python, name..."></label>
+        <label>Programme
+          <select name="programme">
+            <option value="all">All programmes</option>
+            <option>Applied Physics</option>
+            <option>Life Science & Technology</option>
+            <option>Molecular Science & Technology</option>
+            <option>Nanobiology</option>
+            <option>Chemical Engineering</option>
+            <option>Other Applied Sciences</option>
+          </select>
+        </label>
+        <label>Study phase
+          <select name="phase">
+            <option value="all">All phases</option>
+            <option>Bachelor</option>
+            <option>Master</option>
+            <option>Graduating</option>
+            <option>PhD orientation</option>
+          </select>
+        </label>
+        <label>Looking for
+          <select name="looking">
+            <option value="all">All types</option>
+            <option>Internship</option>
+            <option>Graduation project</option>
+            <option>Career opportunity</option>
+            <option>Job</option>
+            <option>Research collaboration</option>
+          </select>
+        </label>
+        <label>Skill <input name="skill" type="search" placeholder="microscopy"></label>
+        <label>Language <input name="language" type="search" placeholder="Dutch"></label>
+        <label>Location <input name="location" type="search" placeholder="Delft"></label>
+        <label>Remote
+          <select name="remote">
+            <option value="all">Any</option>
+            <option>On-site</option>
+            <option>Hybrid</option>
+            <option>Remote</option>
+            <option>Flexible</option>
+          </select>
+        </label>
+        <label>Availability <input name="availability" type="search" placeholder="September, summer, 24 h"></label>
+        <button class="button primary" type="submit">Filter profiles</button>
+        <button class="button ghost" id="resetFilters" type="button">Reset</button>
+      </form>
+
+      <div class="directory-summary">
+        <p class="student-results-meta" id="studentResultsMeta"></p>
+        <p class="hint" id="studentScopeHint">Showing approved visible profiles.</p>
+      </div>
+
+      <div class="student-grid students-page-grid" id="studentGrid" aria-live="polite"></div>
+
+      <form class="panel contact-panel hidden" id="contactForm">
+        <h3 id="contactTitle">Contact student</h3>
+        <label>Subject <input name="subject" type="text" required></label>
+        <label>Message <textarea name="message" rows="4" required></textarea></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">Send contact request</button>
+          <button class="button ghost" id="cancelContact" type="button">Cancel</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <img src="assets/Icon.png" alt="">
+      <span>ASSconnect Students</span>
+    </div>
+    <p>Student profile directory for Applied Sciences opportunities.</p>
+  </footer>
+
+  <script src="students-page.js"></script>
+</body>
+</html>

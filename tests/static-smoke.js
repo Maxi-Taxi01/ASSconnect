@@ -4,6 +4,10 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const files = [
   "public/index.html",
+  "public/profile.html",
+  "public/profile-page.js",
+  "public/students.html",
+  "public/students-page.js",
   "public/styles.css",
   "public/script.js",
   "public/assets/Icon.png",
