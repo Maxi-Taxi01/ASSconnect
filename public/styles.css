@@ -525,6 +525,71 @@ textarea:focus {
   align-items: start;
 }
 
+.profile-compact-header {
+  max-width: 940px;
+  margin-bottom: 20px;
+}
+
+.profile-compact-header h2 {
+  max-width: 560px;
+  font-size: clamp(1.45rem, 2.25vw, 2rem);
+  line-height: 1.12;
+}
+
+.profile-compact-layout {
+  grid-template-columns: minmax(340px, 560px) minmax(260px, 320px);
+  max-width: 940px;
+  justify-content: center;
+}
+
+.profile-quick-card {
+  width: 100%;
+  min-height: 560px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.quick-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.quick-form-grid label:first-child,
+.quick-form-grid label:nth-child(2) {
+  grid-column: span 2;
+}
+
+.profile-details-modal {
+  position: fixed;
+  z-index: 48;
+  inset: 78px 0 0;
+  padding: clamp(16px, 3vw, 34px);
+  overflow-y: auto;
+  background: rgba(17, 32, 39, 0.5);
+}
+
+.profile-details-panel {
+  max-width: 760px;
+  margin: 0 auto 34px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.profile-details-panel .form-grid,
+.profile-details-panel .form-actions {
+  margin-bottom: 14px;
+}
+
+.profile-compact-preview {
+  align-self: stretch;
+}
+
 .two-column {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 22px;
@@ -893,6 +958,25 @@ textarea:focus {
 
   .auth-modal {
     inset: 68px 0 0;
+  }
+
+  .profile-details-modal {
+    inset: 68px 0 0;
+    padding: 12px;
+  }
+
+  .profile-quick-card {
+    min-height: auto;
+    aspect-ratio: auto;
+  }
+
+  .quick-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-form-grid label:first-child,
+  .quick-form-grid label:nth-child(2) {
+    grid-column: auto;
   }
 
   .auth-section.auth-modal {

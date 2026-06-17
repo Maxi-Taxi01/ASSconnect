@@ -115,14 +115,15 @@
     </section>
 
     <section class="profile-section" id="profile">
-      <div class="section-header">
+      <div class="section-header profile-compact-header">
         <p class="eyebrow">Student profile</p>
-        <h2>Create, edit, export or delete a professional-facing profile.</h2>
+        <h2>Create, edit, export or delete your profile.</h2>
       </div>
-      <div class="profile-layout">
-        <form class="panel profile-form" id="profileForm">
-          <div class="form-grid">
+      <div class="profile-layout profile-compact-layout">
+        <form class="panel profile-form profile-quick-card" id="profileForm">
+          <div class="quick-form-grid">
             <label>Full name <input name="name" type="text" required></label>
+            <label>Email <input name="email" type="email" required></label>
             <label>Programme
               <select name="programme" required>
                 <option value="">Select programme</option>
@@ -152,43 +153,57 @@
                 <option>Research collaboration</option>
               </select>
             </label>
-            <label>Availability text <input name="availability" type="text" placeholder="From September 2026, 24 h/week"></label>
-            <label>Availability date <input name="availabilityDate" type="date"></label>
-            <label>Location <input name="location" type="text" placeholder="Delft, Leiden, remote"></label>
-            <label>Remote preference
-              <select name="remotePreference">
-                <option>On-site</option>
-                <option>Hybrid</option>
-                <option>Remote</option>
-                <option>Flexible</option>
-              </select>
-            </label>
-            <label>Languages <input name="languages" type="text" placeholder="Dutch, English"></label>
-            <label>Email <input name="email" type="email" required></label>
-            <label>Phone <input name="phone" type="tel"></label>
-            <label>LinkedIn <input name="linkedin" type="url" placeholder="https://linkedin.com/in/..."></label>
-            <label>Portfolio <input name="portfolio" type="text" placeholder="Optional"></label>
-            <label>GitHub <input name="github" type="url"></label>
-            <label>Website <input name="website" type="url"></label>
+            <label>Availability <input name="availability" type="text" placeholder="From September 2026, 24 h/week"></label>
           </div>
-          <label>Skills and methods <input name="skills" type="text" placeholder="Python, microscopy, process design"></label>
-          <label>Short bio <textarea name="bio" rows="5" placeholder="A concise summary for companies, recruiters and research groups."></textarea></label>
-          <div class="form-grid">
-            <label>Profile photo <input name="photo" type="file" accept="image/*"></label>
-            <label>CV upload <input name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf"></label>
-          </div>
-          <label class="check-line"><input name="visible" type="checkbox" checked> Visible in student search</label>
-          <label class="check-line"><input name="consentContact" type="checkbox" required> I consent to ASSconnect storing my profile and showing my selected contact information to logged-in professionals.</label>
           <div class="form-actions">
             <button class="button primary" type="submit">Save profile</button>
-            <button class="button ghost" id="exportProfile" type="button">Export my data</button>
-            <button class="button danger" id="deleteProfile" type="button">Delete profile</button>
+            <button class="button ghost" id="openProfileDetails" type="button">More details</button>
           </div>
-          <p class="hint" id="profileFileStatus">Photo and CV are stored only in this browser for the static prototype.</p>
-          <p class="hint">New or edited student profiles are submitted for admin approval before public listing.</p>
+          <p class="hint">Add extra details after signing in. New or edited profiles are submitted for admin approval before public listing.</p>
+
+          <div class="profile-details-modal hidden" id="profileDetailsDialog" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="profileDetailsTitle">
+            <div class="profile-details-panel">
+              <div class="auth-dialog-header">
+                <div>
+                  <p class="eyebrow">Student profile</p>
+                  <h2 id="profileDetailsTitle">More profile details</h2>
+                </div>
+                <button class="auth-close" type="button" aria-label="Close profile details" id="closeProfileDetails">&times;</button>
+              </div>
+              <div class="form-grid">
+                <label>Availability date <input name="availabilityDate" type="date"></label>
+                <label>Location <input name="location" type="text" placeholder="Delft, Leiden, remote"></label>
+                <label>Remote preference
+                  <select name="remotePreference">
+                    <option>On-site</option>
+                    <option>Hybrid</option>
+                    <option>Remote</option>
+                    <option>Flexible</option>
+                  </select>
+                </label>
+                <label>Languages <input name="languages" type="text" placeholder="Dutch, English"></label>
+                <label>Phone <input name="phone" type="tel"></label>
+                <label>LinkedIn <input name="linkedin" type="url" placeholder="https://linkedin.com/in/..."></label>
+              </div>
+              <label>Skills and methods <input name="skills" type="text" placeholder="Python, microscopy, process design"></label>
+              <label>Short bio <textarea name="bio" rows="5" placeholder="A concise summary for companies, recruiters and research groups."></textarea></label>
+              <div class="form-grid">
+                <label>Profile photo <input name="photo" type="file" accept="image/*"></label>
+                <label>CV upload <input name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf"></label>
+              </div>
+              <label class="check-line"><input name="visible" type="checkbox" checked> Visible in student search</label>
+              <label class="check-line"><input name="consentContact" type="checkbox"> I consent to ASSconnect storing my profile and showing my selected contact information to logged-in professionals.</label>
+              <div class="form-actions">
+                <button class="button primary" type="submit">Save all details</button>
+                <button class="button ghost" id="exportProfile" type="button">Export my data</button>
+                <button class="button danger" id="deleteProfile" type="button">Delete profile</button>
+              </div>
+              <p class="hint" id="profileFileStatus">Photo and CV are stored only in this browser for the static prototype.</p>
+            </div>
+          </div>
         </form>
 
-        <aside class="preview-card" id="profilePreview" aria-label="Profile preview"></aside>
+        <aside class="preview-card profile-compact-preview" id="profilePreview" aria-label="Profile preview"></aside>
       </div>
     </section>
 

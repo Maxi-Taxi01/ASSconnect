@@ -96,6 +96,30 @@
     $("#authNavActions")?.classList.toggle("hidden", Boolean(state.user));
   }
 
+  function openProfileDetails() {
+    if (!requireRole("student", "admin")) {
+      setStatus("Log in as a student to add more profile details.");
+      openAuth("login");
+      return;
+    }
+    const dialog = $("#profileDetailsDialog");
+    if (!dialog) return;
+    dialog.classList.remove("hidden");
+    dialog.setAttribute("aria-hidden", "false");
+    document.body.classList.add("auth-open");
+    requestAnimationFrame(() => {
+      dialog.querySelector("input, select, textarea, button")?.focus();
+    });
+  }
+
+  function closeProfileDetails() {
+    const dialog = $("#profileDetailsDialog");
+    if (!dialog) return;
+    dialog.classList.add("hidden");
+    dialog.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("auth-open");
+  }
+
   function formObject(form) {
     return Object.fromEntries(new FormData(form).entries());
   }
@@ -164,6 +188,7 @@
       state.token = "";
       state.user = null;
       localStorage.removeItem(tokenKey);
+      closeProfileDetails();
       await refreshAll();
       setStatus("Logged out.");
     });
@@ -175,6 +200,7 @@
     const isAdmin = requireRole("admin");
 
     setHidden($("#profile .profile-form"), !isStudent);
+    setHidden($("#openProfileDetails"), !isStudent);
     setHidden($("#professionals .professional-tools"), !isProfessional);
     setHidden($("#admin .admin-dashboard"), !isAdmin);
 
@@ -226,9 +252,6 @@
       "email",
       "phone",
       "linkedin",
-      "portfolio",
-      "github",
-      "website",
       "bio"
     ];
     for (const field of fields) {
@@ -619,6 +642,7 @@
         const result = await api("/api/profile", { method: "POST", body: data });
         renderProfilePreview(result.profile);
         await loadAdmin();
+        closeProfileDetails();
         setStatus(result.message);
       } catch (error) {
         setStatus(error.message);
@@ -840,6 +864,8 @@
       const openButton = event.target.closest("[data-auth-open]");
       const tabButton = event.target.closest("[data-auth-tab]");
       const closeButton = event.target.closest("[data-auth-close]");
+      const profileDetailsOpen = event.target.closest("#openProfileDetails");
+      const profileDetailsClose = event.target.closest("#closeProfileDetails");
       if (openButton) {
         event.preventDefault();
         openAuth(openButton.dataset.authOpen);
@@ -852,9 +878,20 @@
         event.preventDefault();
         closeAuth();
       }
+      if (profileDetailsOpen) {
+        event.preventDefault();
+        openProfileDetails();
+      }
+      if (profileDetailsClose || event.target === $("#profileDetailsDialog")) {
+        event.preventDefault();
+        closeProfileDetails();
+      }
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeAuth();
+      if (event.key === "Escape") {
+        closeAuth();
+        closeProfileDetails();
+      }
     });
   }
 

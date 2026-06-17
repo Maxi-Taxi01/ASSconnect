@@ -59,9 +59,6 @@ const defaultState = {
       email: "student@assconnect.local",
       phone: "",
       linkedin: "",
-      portfolio: "",
-      github: "",
-      website: "",
       skills: ["quantum devices", "cryogenics", "Python"],
       bio: "Explores quantum measurement, low-temperature setups and device characterization.",
       photo: null,
@@ -88,9 +85,6 @@ const defaultState = {
       email: "maya.devries@student.tudelft.nl",
       phone: "",
       linkedin: "https://linkedin.com/in/mayadevries",
-      portfolio: "",
-      github: "",
-      website: "",
       skills: ["single-cell analysis", "Python", "microscopy"],
       bio: "Interested in cellular imaging, quantitative biology and reproducible analysis pipelines.",
       photo: null,
@@ -117,9 +111,6 @@ const defaultState = {
       email: "lars.meijer@student.tudelft.nl",
       phone: "",
       linkedin: "",
-      portfolio: "",
-      github: "",
-      website: "",
       skills: ["optics", "Matlab", "laser systems"],
       bio: "Looking for an experimental physics internship with instrumentation, optics or photonics.",
       photo: null,
@@ -146,9 +137,6 @@ const defaultState = {
       email: "sofia.chen@student.tudelft.nl",
       phone: "",
       linkedin: "https://linkedin.com/in/sofiachen",
-      portfolio: "",
-      github: "",
-      website: "",
       skills: ["bioprocessing", "GMP", "data analysis"],
       bio: "Combines wet-lab experience with process thinking and is exploring biotech scale-up roles.",
       photo: null,
@@ -175,9 +163,6 @@ const defaultState = {
       email: "tom.vandijk@student.tudelft.nl",
       phone: "",
       linkedin: "",
-      portfolio: "",
-      github: "",
-      website: "",
       skills: ["catalysis", "reaction engineering", "sustainability"],
       bio: "Focused on sustainable chemistry, materials and industrial process design.",
       photo: null,
@@ -419,6 +404,30 @@ function syncAuthActions() {
   $("#authNavActions")?.classList.toggle("hidden", Boolean(state.user));
 }
 
+function openProfileDetails() {
+  if (!state.user) {
+    setStatus("Log in as a student to add more profile details.", true);
+    openAuth("login");
+    return;
+  }
+  const dialog = $("#profileDetailsDialog");
+  if (!dialog) return;
+  dialog.classList.remove("hidden");
+  dialog.setAttribute("aria-hidden", "false");
+  document.body.classList.add("auth-open");
+  requestAnimationFrame(() => {
+    dialog.querySelector("input, select, textarea, button")?.focus();
+  });
+}
+
+function closeProfileDetails() {
+  const dialog = $("#profileDetailsDialog");
+  if (!dialog) return;
+  dialog.classList.add("hidden");
+  dialog.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("auth-open");
+}
+
 function renderSession() {
   const bar = $("#sessionBar");
   syncAuthActions();
@@ -438,6 +447,7 @@ function roleGate() {
   $("#profile").classList.toggle("hidden", Boolean(role && !["student", "admin"].includes(role)));
   $("#professionals").classList.toggle("hidden", Boolean(role && !["professional", "admin"].includes(role)));
   $("#admin").classList.toggle("hidden", role !== "admin");
+  $("#openProfileDetails")?.classList.toggle("hidden", Boolean(state.user && !["student", "admin"].includes(role)));
 }
 
 function renderPreview() {
@@ -525,6 +535,7 @@ async function logout() {
   state.profile = null;
   state.company = null;
   $("#profileForm").reset();
+  closeProfileDetails();
   renderSession();
   roleGate();
   renderPreview();
@@ -641,9 +652,6 @@ async function saveProfile(event) {
     email: data.email || state.user.email,
     phone: data.phone,
     linkedin: data.linkedin,
-    portfolio: data.portfolio,
-    github: data.github,
-    website: data.website,
     skills: data.skills,
     bio: data.bio,
     photo: data.photo || existing?.photo || null,
@@ -658,6 +666,7 @@ async function saveProfile(event) {
   renderPreview();
   loadStudents();
   loadAdmin();
+  closeProfileDetails();
   setStatus(`Profile saved locally with status: ${profile.status}.`);
 }
 
@@ -1081,7 +1090,10 @@ function bindEvents() {
   });
   $$(".site-nav a").forEach((link) => link.addEventListener("click", () => document.body.classList.remove("menu-open")));
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeAuth();
+    if (event.key === "Escape") {
+      closeAuth();
+      closeProfileDetails();
+    }
   });
   $("#loginForm").addEventListener("submit", wrap(login));
   $("#registerForm").addEventListener("submit", wrap(register));
@@ -1113,6 +1125,8 @@ function bindEvents() {
     const openButton = event.target.closest("[data-auth-open]");
     const tabButton = event.target.closest("[data-auth-tab]");
     const closeButton = event.target.closest("[data-auth-close]");
+    const profileDetailsOpen = event.target.closest("#openProfileDetails");
+    const profileDetailsClose = event.target.closest("#closeProfileDetails");
     const contact = event.target.closest("[data-contact]");
     const save = event.target.closest("[data-save]");
     const report = event.target.closest("[data-report]");
@@ -1129,6 +1143,14 @@ function bindEvents() {
     if (closeButton || event.target === $("#auth")) {
       event.preventDefault();
       closeAuth();
+    }
+    if (profileDetailsOpen) {
+      event.preventDefault();
+      openProfileDetails();
+    }
+    if (profileDetailsClose || event.target === $("#profileDetailsDialog")) {
+      event.preventDefault();
+      closeProfileDetails();
     }
     if (contact) openContact(contact.dataset.contact);
     if (save) await saveStudent(save.dataset.save);
