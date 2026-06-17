@@ -135,11 +135,15 @@ async function main() {
         bio: "Profile created by admin smoke test.",
         visible: true,
         consentContact: true,
-        moderationStatus: "approved"
+        moderationStatus: "approved",
+        photoFileName: "admin-avatar.png",
+        photoDataUrl:
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
       },
       adminLogin.token
     );
     assert.equal(adminCreatedProfile.profile.name, "Admin Added Student");
+    assert.ok(adminCreatedProfile.profile.photoUrl.includes("/uploads/"));
     const adminUpdatedProfile = await request(
       "PUT",
       `/api/admin/profiles/${adminCreatedProfile.profile.id}`,

@@ -34,6 +34,9 @@
     form.querySelectorAll('input[type="checkbox"][name]').forEach((input) => {
       payload[input.name] = input.checked;
     });
+    form.querySelectorAll('input[type="file"][name]').forEach((input) => {
+      delete payload[input.name];
+    });
     return payload;
   }
 
@@ -66,6 +69,17 @@
 
   function tags(items) {
     return (items || []).map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("");
+  }
+
+  async function fileToDataUrl(file) {
+    if (!file) return "";
+    if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} is larger than 5 MB.`);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+      reader.readAsDataURL(file);
+    });
   }
 
   function renderSession() {
@@ -120,6 +134,7 @@
     return `
       <article class="admin-record-card">
         <div>
+          ${profile.photoUrl ? `<img class="student-photo" src="${escapeHtml(profile.photoUrl)}" alt="">` : ""}
           <h3>${escapeHtml(profile.name || "Unnamed student")}</h3>
           <p class="hint">${escapeHtml(profile.email || profile.ownerEmail || "No email")} | ${escapeHtml(profile.programme || "Programme pending")}</p>
           <p>${escapeHtml(profile.bio || "No bio added.")}</p>
@@ -184,6 +199,7 @@
     form.elements.visible.checked = true;
     form.elements.consentContact.checked = true;
     form.elements.moderationStatus.value = "approved";
+    $("#adminProfileFileStatus").textContent = "No profile photo stored yet.";
   }
 
   function clearCompanyForm() {
@@ -223,6 +239,7 @@
     form.elements.skills.value = (profile.skills || []).join(", ");
     form.elements.visible.checked = Boolean(profile.visible);
     form.elements.consentContact.checked = Boolean(profile.consentContact);
+    $("#adminProfileFileStatus").textContent = profile.photoUrl ? "Profile photo stored." : "No profile photo stored yet.";
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -275,6 +292,11 @@
     event.preventDefault();
     const form = event.currentTarget;
     const payload = formPayload(form);
+    const photo = form.elements.photo?.files?.[0];
+    if (photo) {
+      payload.photoDataUrl = await fileToDataUrl(photo);
+      payload.photoFileName = photo.name;
+    }
     const id = payload.id;
     const result = await api(id ? `/api/admin/profiles/${encodeURIComponent(id)}` : "/api/admin/profiles", {
       method: id ? "PUT" : "POST",

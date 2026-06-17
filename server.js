@@ -1146,6 +1146,9 @@ async function handleApi(req, res, dbFile, uploadsDir) {
           cvUrl: "",
           createdAt: nowIso()
         };
+        if (body.photoDataUrl) {
+          profile.photoUrl = saveDataUrlUpload(body.photoDataUrl, body.photoFileName, "image", uploadsDir);
+        }
         applyAdminProfileFields(profile, body, owner);
         db.profiles.push(profile);
         audit(db, user.id, "admin.profileCreate", { profileId: profile.id });
@@ -1172,6 +1175,10 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         if (owner) {
           if (cleanText(body.name)) owner.name = cleanText(body.name);
           if (email) owner.email = email;
+        }
+        if (body.photoDataUrl) {
+          deleteUploadedFile(profile.photoUrl, uploadsDir);
+          profile.photoUrl = saveDataUrlUpload(body.photoDataUrl, body.photoFileName, "image", uploadsDir);
         }
         applyAdminProfileFields(profile, body, owner);
         audit(db, user.id, "admin.profileUpdate", { profileId: profile.id });
