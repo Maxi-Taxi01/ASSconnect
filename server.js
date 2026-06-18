@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT || 4173);
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 const TOKEN_TTL_MS = 1000 * 60 * 60;
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -129,6 +130,97 @@ function clearLoginFailures(email) {
   loginAttempts.delete(email);
 }
 
+const TOTP_STEP_SECONDS = 30;
+const TOTP_DIGITS = 6;
+const MIN_AGE_YEARS = 16;
+
+function base32Encode(buffer) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  let out = "";
+  for (const byte of buffer) bits += byte.toString(2).padStart(8, "0");
+  for (let i = 0; i + 5 <= bits.length; i += 5) out += alphabet[parseInt(bits.slice(i, i + 5), 2)];
+  return out;
+}
+
+function base32Decode(input) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = String(input || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = "";
+  for (const ch of clean) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  return Buffer.from(bytes);
+}
+
+function generateTotpSecret() {
+  return base32Encode(crypto.randomBytes(20));
+}
+
+function totpCode(secret, counter) {
+  const key = base32Decode(secret);
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64BE(BigInt(counter));
+  const hmac = crypto.createHmac("sha1", key).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const bin =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return String(bin % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, "0");
+}
+
+function verifyTotp(secret, token, atMs = Date.now()) {
+  const code = String(token || "").replace(/\D/g, "");
+  if (code.length !== TOTP_DIGITS || !secret) return false;
+  const counter = Math.floor(atMs / 1000 / TOTP_STEP_SECONDS);
+  for (let drift = -1; drift <= 1; drift += 1) {
+    if (totpCode(secret, counter + drift) === code) return true;
+  }
+  return false;
+}
+
+function totpAuthUri(secret, label) {
+  return `otpauth://totp/ASSconnect:${encodeURIComponent(label)}?secret=${secret}&issuer=ASSconnect&period=${TOTP_STEP_SECONDS}&digits=${TOTP_DIGITS}`;
+}
+
+function ageFromDateOfBirth(dob) {
+  const date = new Date(dob);
+  if (Number.isNaN(date.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - date.getFullYear();
+  const monthDiff = now.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < date.getDate())) age -= 1;
+  return age;
+}
+
+function recordProfileHistory(db, profileId, changedByUserId, previous) {
+  if (!previous) return;
+  db.profileHistory.push({
+    id: randomId("phist"),
+    profileId,
+    changedByUserId,
+    changedAt: nowIso(),
+    snapshot: {
+      name: previous.name,
+      programme: previous.programme,
+      phase: previous.phase,
+      studyYear: previous.studyYear,
+      looking: previous.looking,
+      availability: previous.availability,
+      location: previous.location,
+      remotePreference: previous.remotePreference,
+      languages: previous.languages,
+      skills: previous.skills,
+      bio: previous.bio,
+      visible: previous.visible,
+      consentContact: previous.consentContact,
+      moderationStatus: previous.moderationStatus
+    }
+  });
+}
+
 function sortItems(items, sort) {
   const arr = items.slice();
   const time = (value) => new Date(value || 0).getTime();
@@ -185,6 +277,10 @@ function safeUser(user) {
     role: user.role,
     companyName: user.companyName || "",
     emailVerified: Boolean(user.emailVerified),
+    twoFactorEnabled: Boolean(user.totpEnabled),
+    pendingEmail: user.pendingEmail || "",
+    processingRestricted: Boolean(user.processingRestricted),
+    dateOfBirth: user.dateOfBirth || "",
     suspended: Boolean(user.suspendedAt),
     suspendedReason: user.suspendedReason || "",
     createdAt: user.createdAt
@@ -252,6 +348,8 @@ function baseDb() {
     analytics: [],
     backups: [],
     blocks: [],
+    profileHistory: [],
+    dataRequests: [],
     mailOutbox: [],
     auditLog: []
   };
@@ -351,6 +449,8 @@ const COLLECTION_KEYS = [
   "analytics",
   "backups",
   "blocks",
+  "profileHistory",
+  "dataRequests",
   "mailOutbox",
   "auditLog"
 ];
@@ -803,6 +903,15 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         json(res, 400, { error: passwordError });
         return;
       }
+      const age = ageFromDateOfBirth(body.dateOfBirth);
+      if (age === null) {
+        json(res, 400, { error: "A valid date of birth is required to register." });
+        return;
+      }
+      if (age < MIN_AGE_YEARS) {
+        json(res, 400, { error: `You must be at least ${MIN_AGE_YEARS} years old to create an ASSconnect account.` });
+        return;
+      }
       if (db.users.some((user) => user.email === email && !user.deletedAt)) {
         json(res, 409, { error: "An account with this email already exists." });
         return;
@@ -815,6 +924,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         companyName: role === "professional" ? cleanText(body.companyName) : "",
         passwordHash: hashPassword(body.password),
         emailVerified: false,
+        dateOfBirth: cleanText(body.dateOfBirth),
         savedProfileIds: [],
         createdAt: nowIso()
       };
@@ -886,6 +996,18 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         json(res, 403, { error: "Verify your email before logging in." });
         return;
       }
+      if (user.totpEnabled) {
+        const totp = String(body.totpCode || "");
+        if (!totp) {
+          json(res, 401, { error: "Enter your authenticator code.", totpRequired: true });
+          return;
+        }
+        if (!verifyTotp(user.totpSecret, totp)) {
+          recordLoginFailure(email);
+          json(res, 401, { error: "Authenticator code is invalid.", totpRequired: true });
+          return;
+        }
+      }
       clearLoginFailures(email);
       const token = crypto.randomBytes(32).toString("hex");
       db.sessions.push({
@@ -895,7 +1017,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         ip: req.socket.remoteAddress || "",
         userAgent: req.headers["user-agent"] || "",
         createdAt: nowIso(),
-        expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString()
+        expiresAt: new Date(Date.now() + (user.role === "admin" ? ADMIN_SESSION_TTL_MS : SESSION_TTL_MS)).toISOString()
       });
       audit(db, user.id, "auth.login");
       saveDb(db, dbFile);
@@ -977,11 +1099,167 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       return;
     }
 
+    if (method === "POST" && pathName === "/api/account/email") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      const newEmail = normalizeEmail(body.newEmail || body.email);
+      if (!verifyPassword(body.password, user.passwordHash)) {
+        json(res, 403, { error: "Your current password is required to change your email." });
+        return;
+      }
+      if (!newEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail)) {
+        json(res, 400, { error: "Enter a valid new email address." });
+        return;
+      }
+      if (newEmail === user.email) {
+        json(res, 400, { error: "That is already your account email." });
+        return;
+      }
+      if (db.users.some((item) => item.email === newEmail && !item.deletedAt)) {
+        json(res, 409, { error: "Another account already uses this email address." });
+        return;
+      }
+      const code = randomCode();
+      user.pendingEmail = newEmail;
+      db.verificationTokens.push({
+        id: randomId("verify"),
+        userId: user.id,
+        purpose: "email-change",
+        tokenHash: tokenHash(code),
+        expiresAt: new Date(Date.now() + TOKEN_TTL_MS).toISOString(),
+        createdAt: nowIso()
+      });
+      sendEmail(db, newEmail, "Confirm your new ASSconnect email", `Your ASSconnect email change code is ${code}.`);
+      audit(db, user.id, "account.emailChangeRequested", { pendingEmail: newEmail });
+      saveDb(db, dbFile);
+      json(res, 200, {
+        message: "Check the new address for a confirmation code.",
+        devCode: IS_PRODUCTION ? undefined : code
+      });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/account/email/verify") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      const token = db.verificationTokens.find(
+        (item) =>
+          item.userId === user.id &&
+          item.purpose === "email-change" &&
+          item.tokenHash === tokenHash(body.code) &&
+          !item.usedAt &&
+          new Date(item.expiresAt).getTime() > Date.now()
+      );
+      if (!user.pendingEmail || !token) {
+        json(res, 400, { error: "Confirmation code is invalid or expired." });
+        return;
+      }
+      if (db.users.some((item) => item.email === user.pendingEmail && item.id !== user.id && !item.deletedAt)) {
+        json(res, 409, { error: "Another account now uses this email address." });
+        return;
+      }
+      user.email = user.pendingEmail;
+      user.pendingEmail = "";
+      user.emailVerified = true;
+      token.usedAt = nowIso();
+      db.sessions = db.sessions.filter((item) => item.userId !== user.id || item.tokenHash === tokenHash((req.headers.authorization || "").replace(/^Bearer\s+/i, "")));
+      audit(db, user.id, "account.emailChanged");
+      saveDb(db, dbFile);
+      json(res, 200, { user: safeUser(user), message: "Email address updated." });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/account/2fa/setup") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const secret = generateTotpSecret();
+      user.totpPendingSecret = secret;
+      saveDb(db, dbFile);
+      json(res, 200, { secret, otpauthUri: totpAuthUri(secret, user.email) });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/account/2fa/enable") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      if (!user.totpPendingSecret) {
+        json(res, 400, { error: "Start two-factor setup first." });
+        return;
+      }
+      if (!verifyTotp(user.totpPendingSecret, body.code)) {
+        json(res, 400, { error: "That authenticator code did not match. Try again." });
+        return;
+      }
+      user.totpSecret = user.totpPendingSecret;
+      user.totpEnabled = true;
+      delete user.totpPendingSecret;
+      audit(db, user.id, "account.2faEnabled");
+      saveDb(db, dbFile);
+      json(res, 200, { user: safeUser(user), message: "Two-factor authentication is on." });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/account/2fa/disable") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      if (!verifyPassword(body.password, user.passwordHash)) {
+        json(res, 403, { error: "Your current password is required to turn off two-factor authentication." });
+        return;
+      }
+      user.totpEnabled = false;
+      delete user.totpSecret;
+      delete user.totpPendingSecret;
+      audit(db, user.id, "account.2faDisabled");
+      saveDb(db, dbFile);
+      json(res, 200, { user: safeUser(user), message: "Two-factor authentication is off." });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/account/data-request") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      const type = ["access", "deletion", "restriction", "objection", "correction", "portability"].includes(cleanText(body.type))
+        ? cleanText(body.type)
+        : "";
+      if (!type) {
+        json(res, 400, { error: "Choose a valid request type." });
+        return;
+      }
+      const request = {
+        id: randomId("dsr"),
+        userId: user.id,
+        type,
+        note: cleanMultiline(body.note),
+        status: "open",
+        createdAt: nowIso()
+      };
+      db.dataRequests.push(request);
+      if (type === "restriction") user.processingRestricted = true;
+      sendEmail(db, "admin@assconnect.local", `ASSconnect data request: ${type}`, `A ${type} request was submitted.`);
+      audit(db, user.id, "privacy.dataRequest", { type });
+      saveDb(db, dbFile);
+      json(res, 201, {
+        request,
+        message: type === "restriction"
+          ? "Processing restriction recorded. Your profile is hidden until an admin reviews it."
+          : "Your request has been recorded and sent to an administrator."
+      });
+      return;
+    }
+
     if (method === "GET" && pathName === "/api/students") {
       const viewer = getAuthUser(db, req);
       const includeAll = viewer?.role === "admin" && parsed.searchParams.get("scope") === "all";
+      const restrictedUserIds = new Set(db.users.filter((item) => item.processingRestricted).map((item) => item.id));
       const visibleProfiles = db.profiles.filter((profile) =>
-        includeAll ? !profile.deletedAt : profile.visible && !profile.deletedAt && profile.moderationStatus === "approved"
+        includeAll
+          ? !profile.deletedAt
+          : profile.visible && !profile.deletedAt && profile.moderationStatus === "approved" && !restrictedUserIds.has(profile.userId)
       );
       const filtered = sortItems(
         filterProfiles(visibleProfiles, parsed.searchParams),
@@ -1021,6 +1299,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         userId: user.id,
         createdAt: nowIso()
       };
+      const previousProfile = existing ? JSON.parse(JSON.stringify(existing)) : null;
       Object.assign(profile, {
         name: cleanText(body.name || user.name),
         programme: cleanText(body.programme),
@@ -1046,6 +1325,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         updatedAt: nowIso()
       });
       if (!existing) db.profiles.push(profile);
+      else recordProfileHistory(db, profile.id, user.id, previousProfile);
       audit(db, user.id, "profile.save", { profileId: profile.id, moderationStatus: profile.moderationStatus });
       saveDb(db, dbFile);
       json(res, 200, {
@@ -1280,14 +1560,18 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         return;
       }
       const body = await readBody(req);
+      const messageId = randomId("message");
       const message = {
-        id: randomId("message"),
+        id: messageId,
+        threadId: messageId,
         fromUserId: user.id,
         toUserId: profile.userId,
+        participantIds: [user.id, profile.userId],
         profileId: profile.id,
         subject: cleanText(body.subject),
         message: cleanMultiline(body.message),
         status: "sent",
+        read: false,
         createdAt: nowIso()
       };
       if (!message.subject || !message.message) {
@@ -1295,7 +1579,7 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         return;
       }
       db.messages.push(message);
-      sendEmail(db, profile.email, `ASSconnect contact request: ${message.subject}`, message.message);
+      sendEmail(db, profile.email, `ASSconnect contact request: ${message.subject}`, `You have a new ASSconnect message: ${message.subject}`);
       audit(db, user.id, "message.send", { messageId: message.id, profileId: profile.id });
       saveDb(db, dbFile);
       json(res, 201, { message: "Contact request sent.", item: message });
@@ -1347,11 +1631,91 @@ async function handleApi(req, res, dbFile, uploadsDir) {
     if (method === "GET" && pathName === "/api/messages") {
       const user = requireAuth(db, req, res);
       if (!user) return;
-      const messages =
+      const nameById = new Map(db.users.map((item) => [item.id, item.name || item.email]));
+      const visible =
         user.role === "admin"
           ? db.messages
           : db.messages.filter((item) => item.fromUserId === user.id || item.toUserId === user.id);
-      json(res, 200, { messages });
+      const messages = visible.map((item) => ({
+        ...item,
+        threadId: item.threadId || item.id,
+        read: item.read === undefined ? true : Boolean(item.read),
+        fromName: nameById.get(item.fromUserId) || "Unknown",
+        toName: nameById.get(item.toUserId) || "Unknown",
+        unread: item.toUserId === user.id && item.read === false
+      }));
+      const unreadCount = messages.filter((item) => item.unread).length;
+      json(res, 200, { messages, unreadCount });
+      return;
+    }
+
+    const messageReplyMatch = pathName.match(/^\/api\/messages\/([^/]+)\/reply$/);
+    if (method === "POST" && messageReplyMatch) {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const original = db.messages.find((item) => item.id === messageReplyMatch[1]);
+      if (!original) {
+        notFound(res);
+        return;
+      }
+      const participants = original.participantIds || [original.fromUserId, original.toUserId];
+      if (!participants.includes(user.id) && user.role !== "admin") {
+        json(res, 403, { error: "You are not part of this conversation." });
+        return;
+      }
+      const recipientId = participants.find((id) => id !== user.id) || original.fromUserId;
+      const blocked = db.blocks.some((item) => item.ownerUserId === recipientId && item.blockedUserId === user.id);
+      if (blocked && user.role !== "admin") {
+        json(res, 403, { error: "You can no longer message this person." });
+        return;
+      }
+      const body = await readBody(req);
+      const text = cleanMultiline(body.message);
+      if (!text) {
+        json(res, 400, { error: "A reply message is required." });
+        return;
+      }
+      const reply = {
+        id: randomId("message"),
+        threadId: original.threadId || original.id,
+        fromUserId: user.id,
+        toUserId: recipientId,
+        participantIds: participants,
+        profileId: original.profileId,
+        subject: original.subject ? `Re: ${original.subject}` : "Re: conversation",
+        message: text,
+        status: "sent",
+        read: false,
+        createdAt: nowIso()
+      };
+      db.messages.push(reply);
+      const recipient = db.users.find((item) => item.id === recipientId);
+      if (recipient) sendEmail(db, recipient.email, `ASSconnect reply: ${reply.subject}`, "You have a new reply in an ASSconnect conversation.");
+      audit(db, user.id, "message.reply", { threadId: reply.threadId });
+      saveDb(db, dbFile);
+      json(res, 201, { item: reply, message: "Reply sent." });
+      return;
+    }
+
+    const messageReadMatch = pathName.match(/^\/api\/messages\/([^/]+)\/read$/);
+    if (method === "POST" && messageReadMatch) {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const target = db.messages.find((item) => item.id === messageReadMatch[1]);
+      if (!target) {
+        notFound(res);
+        return;
+      }
+      const threadId = target.threadId || target.id;
+      let changed = 0;
+      for (const item of db.messages) {
+        if ((item.threadId || item.id) === threadId && item.toUserId === user.id && item.read === false) {
+          item.read = true;
+          changed += 1;
+        }
+      }
+      saveDb(db, dbFile);
+      json(res, 200, { ok: true, markedRead: changed });
       return;
     }
 
@@ -1503,7 +1867,9 @@ async function handleApi(req, res, dbFile, uploadsDir) {
           deleteUploadedFile(profile.photoUrl, uploadsDir);
           profile.photoUrl = saveDataUrlUpload(body.photoDataUrl, body.photoFileName, "image", uploadsDir);
         }
+        const previousAdminProfile = JSON.parse(JSON.stringify(profile));
         applyAdminProfileFields(profile, body, owner);
+        recordProfileHistory(db, profile.id, user.id, previousAdminProfile);
         audit(db, user.id, "admin.profileUpdate", { profileId: profile.id });
         saveDb(db, dbFile);
         json(res, 200, { profile: profileForAdmin(db, profile), message: "Student profile updated." });
@@ -1889,6 +2255,55 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         json(res, 200, { blocks });
         return;
       }
+
+      const adminHistoryMatch = pathName.match(/^\/api\/admin\/profiles\/([^/]+)\/history$/);
+      if (method === "GET" && adminHistoryMatch) {
+        const emailById = new Map(db.users.map((item) => [item.id, item.email]));
+        const history = db.profileHistory
+          .filter((item) => item.profileId === adminHistoryMatch[1])
+          .map((item) => ({ ...item, changedByEmail: emailById.get(item.changedByUserId) || "unknown" }))
+          .reverse();
+        json(res, 200, { history });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/data-requests") {
+        const userById = new Map(db.users.map((item) => [item.id, item]));
+        const requests = db.dataRequests
+          .map((item) => {
+            const owner = userById.get(item.userId);
+            return {
+              ...item,
+              userEmail: owner?.email || "",
+              userName: owner?.name || "",
+              processingRestricted: Boolean(owner?.processingRestricted)
+            };
+          })
+          .reverse();
+        json(res, 200, { requests });
+        return;
+      }
+
+      const dataRequestResolveMatch = pathName.match(/^\/api\/admin\/data-requests\/([^/]+)\/resolve$/);
+      if (method === "POST" && dataRequestResolveMatch) {
+        const body = await readBody(req);
+        const request = db.dataRequests.find((item) => item.id === dataRequestResolveMatch[1]);
+        if (!request) {
+          notFound(res);
+          return;
+        }
+        request.status = ["open", "resolved", "rejected"].includes(body.status) ? body.status : "resolved";
+        request.resolvedAt = nowIso();
+        request.resolvedByUserId = user.id;
+        if (boolValue(body.liftRestriction)) {
+          const owner = db.users.find((item) => item.id === request.userId);
+          if (owner) owner.processingRestricted = false;
+        }
+        audit(db, user.id, "admin.dataRequestResolve", { requestId: request.id, status: request.status });
+        saveDb(db, dbFile);
+        json(res, 200, { request });
+        return;
+      }
     }
 
     notFound(res);
@@ -1927,5 +2342,9 @@ module.exports = {
   saveDb,
   baseDb,
   hashPassword,
-  verifyPassword
+  verifyPassword,
+  generateTotpSecret,
+  totpCode,
+  verifyTotp,
+  ageFromDateOfBirth
 };

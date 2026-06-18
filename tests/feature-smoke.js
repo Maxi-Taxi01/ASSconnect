@@ -52,7 +52,7 @@ async function main() {
   }
 
   async function registerVerifyLogin(role, name, email, password) {
-    const reg = await request("POST", "/api/auth/register", { role, name, email, password });
+    const reg = await request("POST", "/api/auth/register", { role, name, email, password, dateOfBirth: "2000-01-01" });
     assert.equal(reg.status, 201, `register ${email}: ${JSON.stringify(reg.data)}`);
     await request("POST", "/api/auth/verify", { email, code: reg.data.devCode });
     const login = await request("POST", "/api/auth/login", { email, password });
@@ -68,7 +68,7 @@ async function main() {
   assert.equal((await request("POST", "/api/auth/register", { role: "student", name: "A", email: "weak1@test.x", password: "short1" })).status, 400, "too short rejected");
   assert.equal((await request("POST", "/api/auth/register", { role: "student", name: "A", email: "weak2@test.x", password: "alllettersx" })).status, 400, "no-digit rejected");
   assert.equal((await request("POST", "/api/auth/register", { role: "student", name: "A", email: "weak3@test.x", password: "password1" })).status, 400, "common password rejected");
-  assert.equal((await request("POST", "/api/auth/register", { role: "student", name: "A", email: "good@test.x", password: "Strongpass1" })).status, 201, "valid password accepted");
+  assert.equal((await request("POST", "/api/auth/register", { role: "student", name: "A", email: "good@test.x", password: "Strongpass1", dateOfBirth: "2000-01-01" })).status, 201, "valid password accepted");
 
   // 2) Login lockout after repeated failures
   const lockEmail = "locktarget@test.x";

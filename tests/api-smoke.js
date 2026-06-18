@@ -70,7 +70,8 @@ async function main() {
       role: "student",
       name: "Shared Student",
       email: "shared.student@example.test",
-      password: "Student123!"
+      password: "Student123!",
+      dateOfBirth: "2000-01-01"
     });
     assert.ok(registered.devCode, "development verification code should be returned for local testing");
 

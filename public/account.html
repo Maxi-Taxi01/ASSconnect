@@ -59,6 +59,7 @@
             <h2>Log in</h2>
             <label>Email <input name="email" type="email" required autocomplete="email"></label>
             <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+            <label>Authenticator code (if 2FA is on) <input name="totpCode" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
             <button class="button primary" type="submit">Log in</button>
             <p class="hint">Demo student: student@assconnect.local / Student123!</p>
             <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
@@ -77,6 +78,7 @@
               <label>Email <input name="email" type="email" required autocomplete="email"></label>
               <label>Company name <input name="companyName" type="text"></label>
               <label>Password <input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+              <label>Date of birth <input name="dateOfBirth" type="date" required autocomplete="bday"></label>
             </div>
             <button class="button primary" type="submit">Create account</button>
           </form>
@@ -108,6 +110,49 @@
           </div>
         </aside>
       </div>
+
+      <section class="panel account-manage hidden" id="accountManage">
+        <h2>Manage your account</h2>
+        <div class="form-grid">
+          <form id="emailChangeForm">
+            <h3>Change email</h3>
+            <label>New email <input name="newEmail" type="email" required></label>
+            <label>Current password <input name="password" type="password" required autocomplete="current-password"></label>
+            <button class="button primary" type="submit">Send confirmation code</button>
+            <label>Confirmation code <input name="code" type="text" inputmode="numeric"></label>
+            <button class="button ghost" id="emailChangeVerify" type="button">Confirm new email</button>
+          </form>
+
+          <div>
+            <h3>Two-factor authentication</h3>
+            <p class="hint" id="twoFactorStatus">Loading...</p>
+            <div id="twoFactorSetup"></div>
+            <button class="button ghost" id="twoFactorStart" type="button">Set up 2FA</button>
+            <form id="twoFactorEnableForm" class="hidden">
+              <label>Authenticator code <input name="code" type="text" inputmode="numeric" required></label>
+              <button class="button primary" type="submit">Turn on 2FA</button>
+            </form>
+            <form id="twoFactorDisableForm" class="hidden">
+              <label>Current password <input name="password" type="password" required autocomplete="current-password"></label>
+              <button class="button danger" type="submit">Turn off 2FA</button>
+            </form>
+          </div>
+
+          <form id="dataRequestForm">
+            <h3>Privacy requests</h3>
+            <label>Request type
+              <select name="type">
+                <option value="restriction">Restrict processing</option>
+                <option value="objection">Object to processing</option>
+                <option value="access">Access my data</option>
+                <option value="deletion">Delete my data</option>
+              </select>
+            </label>
+            <label>Note <input name="note" type="text"></label>
+            <button class="button primary" type="submit">Submit request</button>
+          </form>
+        </div>
+      </section>
     </section>
   </main>
 

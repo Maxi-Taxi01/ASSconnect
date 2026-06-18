@@ -57,6 +57,7 @@
           <h3>Log in</h3>
           <label>Email <input name="email" type="email" required autocomplete="email"></label>
           <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+          <label>Authenticator code (if 2FA is on) <input name="totpCode" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
           <button class="button primary" type="submit">Log in</button>
           <p class="hint">Demo admin: admin@assconnect.local / Admin123!</p>
           <p class="hint">Demo professional: professional@assconnect.local / Professional123!</p>
@@ -75,6 +76,7 @@
           <label>Email <input name="email" type="email" required autocomplete="email"></label>
           <label>Company name <input name="companyName" type="text"></label>
           <label>Password <input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+          <label>Date of birth <input name="dateOfBirth" type="date" required autocomplete="bday"></label>
           <button class="button primary" type="submit">Register</button>
         </form>
 

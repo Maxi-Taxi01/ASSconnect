@@ -151,6 +151,38 @@
     if (!state.user) renderPreview(null);
   }
 
+  async function downscaleImage(file, maxDim = 1024, quality = 0.85) {
+    if (!file) return "";
+    if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} is larger than 5 MB.`);
+    if (!file.type || !file.type.startsWith("image/")) return fileToDataUrl(file);
+    const sourceDataUrl = await fileToDataUrl(file);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width || 1, img.height || 1));
+        const width = Math.max(1, Math.round((img.width || 1) * scale));
+        const height = Math.max(1, Math.round((img.height || 1) * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(sourceDataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+        try {
+          resolve(canvas.toDataURL(type, quality));
+        } catch (error) {
+          resolve(sourceDataUrl);
+        }
+      };
+      img.onerror = () => resolve(sourceDataUrl);
+      img.src = sourceDataUrl;
+    });
+  }
+
   async function fileToDataUrl(file) {
     if (!file) return "";
     if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} is larger than 5 MB.`);
@@ -200,7 +232,7 @@
     const cv = form.elements.cv?.files?.[0];
     data.visible = Boolean(form.elements.visible?.checked);
     data.consentContact = Boolean(form.elements.consentContact?.checked);
-    data.photoDataUrl = await fileToDataUrl(photo);
+    data.photoDataUrl = await downscaleImage(photo);
     data.photoFileName = photo?.name || "";
     data.cvDataUrl = await fileToDataUrl(cv);
     data.cvFileName = cv?.name || "";

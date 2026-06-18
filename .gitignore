@@ -14,8 +14,10 @@ uploads/*
 tests/tmp-db.json
 tests/tmp-api-db.json
 tests/tmp-feature-db.json
+tests/tmp-feature2-db.json
 tests/tmp-uploads/
 tests/tmp-feature-uploads/
+tests/tmp-feature2-uploads/
 tests/backup-*.json
 
 # Logs and OS metadata

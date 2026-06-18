@@ -28,6 +28,10 @@
     return Object.fromEntries(new FormData(form).entries());
   }
 
+  function setHidden(element, hidden) {
+    if (element) element.classList.toggle("hidden", hidden);
+  }
+
   function normalizeTab(tab) {
     return ["login", "register", "verify", "reset"].includes(tab) ? tab : "register";
   }
@@ -84,6 +88,7 @@
       state.user = null;
       localStorage.removeItem(tokenKey);
       renderSession();
+      renderAccountManage();
       setStatus("Logged out.");
     });
   }
@@ -98,6 +103,7 @@
     const { user } = await api("/api/me");
     state.user = user;
     renderSession();
+    renderAccountManage();
     if (user) setStatus("You are logged in.");
   }
 
@@ -161,6 +167,72 @@
     setStatus(result.message || "Password reset. Please log in.");
   }
 
+  function renderAccountManage() {
+    setHidden($("#accountManage"), !state.user);
+    if (!state.user) return;
+    const status = $("#twoFactorStatus");
+    const enabled = Boolean(state.user.twoFactorEnabled);
+    if (status) status.textContent = enabled ? "Two-factor authentication is ON." : "Two-factor authentication is OFF.";
+    setHidden($("#twoFactorDisableForm"), !enabled);
+    setHidden($("#twoFactorStart"), enabled);
+    setHidden($("#twoFactorEnableForm"), true);
+    const setup = $("#twoFactorSetup");
+    if (setup) setup.innerHTML = "";
+  }
+
+  async function startTwoFactor() {
+    const result = await api("/api/account/2fa/setup", { method: "POST" });
+    const setup = $("#twoFactorSetup");
+    if (setup) {
+      setup.innerHTML = `<p class="hint">Add this key to an authenticator app (e.g. Google Authenticator):</p><p><code>${escapeHtml(result.secret)}</code></p>`;
+    }
+    setHidden($("#twoFactorEnableForm"), false);
+    setHidden($("#twoFactorStart"), true);
+    setStatus("Enter a code from your authenticator app to turn on 2FA.");
+  }
+
+  async function enableTwoFactor(event) {
+    event.preventDefault();
+    const result = await api("/api/account/2fa/enable", { method: "POST", body: formObject(event.currentTarget) });
+    state.user = result.user;
+    event.currentTarget.reset();
+    renderAccountManage();
+    setStatus(result.message || "Two-factor authentication enabled.");
+  }
+
+  async function disableTwoFactor(event) {
+    event.preventDefault();
+    const result = await api("/api/account/2fa/disable", { method: "POST", body: formObject(event.currentTarget) });
+    state.user = result.user;
+    event.currentTarget.reset();
+    renderAccountManage();
+    setStatus(result.message || "Two-factor authentication disabled.");
+  }
+
+  async function changeEmail(event) {
+    event.preventDefault();
+    const result = await api("/api/account/email", { method: "POST", body: formObject(event.currentTarget) });
+    if (result.devCode) event.currentTarget.elements.code.value = result.devCode;
+    setStatus(result.devCode ? `Confirmation code: ${result.devCode}` : result.message);
+  }
+
+  async function verifyEmailChange() {
+    const form = $("#emailChangeForm");
+    const result = await api("/api/account/email/verify", { method: "POST", body: { code: form.elements.code.value } });
+    state.user = result.user;
+    renderSession();
+    renderAccountManage();
+    form.reset();
+    setStatus(result.message || "Email updated.");
+  }
+
+  async function submitDataRequest(event) {
+    event.preventDefault();
+    const result = await api("/api/account/data-request", { method: "POST", body: formObject(event.currentTarget) });
+    event.currentTarget.reset();
+    setStatus(result.message || "Request submitted.");
+  }
+
   function bindEvents() {
     $("#navToggle")?.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
@@ -184,6 +256,12 @@
     $("#resetForm")?.addEventListener("submit", (event) => {
       resetPassword(event).catch((error) => setStatus(error.message));
     });
+    $("#twoFactorStart")?.addEventListener("click", () => startTwoFactor().catch((error) => setStatus(error.message)));
+    $("#twoFactorEnableForm")?.addEventListener("submit", (event) => enableTwoFactor(event).catch((error) => setStatus(error.message)));
+    $("#twoFactorDisableForm")?.addEventListener("submit", (event) => disableTwoFactor(event).catch((error) => setStatus(error.message)));
+    $("#emailChangeForm")?.addEventListener("submit", (event) => changeEmail(event).catch((error) => setStatus(error.message)));
+    $("#emailChangeVerify")?.addEventListener("click", () => verifyEmailChange().catch((error) => setStatus(error.message)));
+    $("#dataRequestForm")?.addEventListener("submit", (event) => submitDataRequest(event).catch((error) => setStatus(error.message)));
   }
 
   async function init() {

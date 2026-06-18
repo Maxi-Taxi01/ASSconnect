@@ -161,6 +161,38 @@
     return params;
   }
 
+  async function downscaleImage(file, maxDim = 1024, quality = 0.85) {
+    if (!file) return "";
+    if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} is larger than 5 MB.`);
+    if (!file.type || !file.type.startsWith("image/")) return fileToDataUrl(file);
+    const sourceDataUrl = await fileToDataUrl(file);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width || 1, img.height || 1));
+        const width = Math.max(1, Math.round((img.width || 1) * scale));
+        const height = Math.max(1, Math.round((img.height || 1) * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(sourceDataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+        try {
+          resolve(canvas.toDataURL(type, quality));
+        } catch (error) {
+          resolve(sourceDataUrl);
+        }
+      };
+      img.onerror = () => resolve(sourceDataUrl);
+      img.src = sourceDataUrl;
+    });
+  }
+
   function fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
       if (!file) {
@@ -473,13 +505,25 @@
       .map(
         (message) => `
           <article class="message-card">
-            <h3>${escapeHtml(message.subject)}</h3>
+            <h3>${escapeHtml(message.subject || "Message")}${message.unread ? ' <span class="badge status-pending">new</span>' : ""}</h3>
+            <p class="hint">From ${escapeHtml(message.fromName || "Unknown")} to ${escapeHtml(message.toName || "Unknown")}</p>
             <p>${escapeHtml(message.message)}</p>
             <p class="hint">${escapeHtml(message.createdAt)}</p>
+            <button class="button ghost mini" data-reply="${escapeHtml(message.id)}" type="button">Reply</button>
           </article>
         `
       )
       .join("");
+    target.onclick = (event) => {
+      const button = event.target.closest("[data-reply]");
+      if (!button) return;
+      const text = window.prompt("Your reply:");
+      if (!text) return;
+      api(`/api/messages/${encodeURIComponent(button.dataset.reply)}/reply`, { method: "POST", body: { message: text } })
+        .then(() => loadMessages())
+        .then(() => setStatus("Reply sent."))
+        .catch((error) => setStatus(error.message));
+    };
   }
 
   async function loadMessages() {
@@ -489,6 +533,14 @@
     }
     const { messages } = await api("/api/messages");
     renderMessages(messages);
+    const unread = messages.filter((message) => message.unread);
+    if (unread.length) {
+      Promise.all(
+        unread.map((message) =>
+          api(`/api/messages/${encodeURIComponent(message.id)}/read`, { method: "POST" }).catch(() => {})
+        )
+      ).catch(() => {});
+    }
   }
 
   function renderAdminSummary(summary) {
@@ -663,7 +715,7 @@
       const cv = form.elements.cv?.files?.[0];
       data.visible = Boolean(form.elements.visible?.checked);
       data.consentContact = Boolean(form.elements.consentContact?.checked);
-      data.photoDataUrl = await fileToDataUrl(photo);
+      data.photoDataUrl = await downscaleImage(photo);
       data.photoFileName = photo?.name || "";
       data.cvDataUrl = await fileToDataUrl(cv);
       data.cvFileName = cv?.name || "";
