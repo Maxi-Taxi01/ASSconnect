@@ -211,6 +211,62 @@
           <p class="student-results-meta" id="adminCompanyMeta"></p>
           <div class="admin-record-grid" id="adminCompanyList" aria-live="polite"></div>
         </section>
+
+        <section class="admin-operations" id="adminOperations">
+          <div class="section-header admin-list-header">
+            <p class="eyebrow">Operations</p>
+            <h2>Moderation, accounts and recovery</h2>
+            <p class="section-intro">Approve pending submissions, manage account access, restore backups and review the audit trail.</p>
+          </div>
+
+          <section class="panel">
+            <div class="subheader admin-panel-header">
+              <h3>Moderation queue</h3>
+              <button class="button ghost" id="refreshOperations" type="button">Refresh</button>
+            </div>
+            <div id="opsQueue" aria-live="polite"></div>
+          </section>
+
+          <section class="panel">
+            <div class="subheader admin-panel-header">
+              <h3>Accounts</h3>
+            </div>
+            <form class="directory-toolbar admin-page-filters" id="opsUserFilters">
+              <label>Search <input name="q" type="search" placeholder="name or email"></label>
+              <label>Role
+                <select name="role">
+                  <option value="all">All roles</option>
+                  <option>student</option>
+                  <option>professional</option>
+                  <option>admin</option>
+                </select>
+              </label>
+              <button class="button primary" type="submit">Filter accounts</button>
+            </form>
+            <div class="admin-record-grid" id="opsUsers" aria-live="polite"></div>
+          </section>
+
+          <section class="panel">
+            <div class="subheader admin-panel-header">
+              <h3>Backups and recovery</h3>
+              <button class="button ghost" id="createBackup" type="button">Create backup</button>
+            </div>
+            <p class="hint">Restoring replaces all current data with the selected backup.</p>
+            <div id="opsBackups" aria-live="polite"></div>
+          </section>
+
+          <section class="panel">
+            <div class="subheader admin-panel-header">
+              <h3>Audit log</h3>
+            </div>
+            <form class="directory-toolbar admin-page-filters" id="opsAuditFilters">
+              <label>Search <input name="q" type="search" placeholder="action, email or detail"></label>
+              <label>Action <input name="action" type="search" placeholder="auth.login"></label>
+              <button class="button primary" type="submit">Filter log</button>
+            </form>
+            <div id="opsAudit" aria-live="polite"></div>
+          </section>
+        </section>
       </div>
     </section>
   </main>

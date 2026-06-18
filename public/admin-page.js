@@ -6,7 +6,10 @@
     token: localStorage.getItem(tokenKey) || "",
     user: null,
     profiles: [],
-    companies: []
+    companies: [],
+    users: [],
+    backups: [],
+    queue: null
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -124,6 +127,10 @@
       ["Students", summary.students],
       ["Professionals", summary.professionals],
       ["Pending profiles", summary.pendingProfiles],
+      ["Pending companies", summary.pendingCompanies],
+      ["Pending opportunities", summary.pendingOpportunities],
+      ["Open reports", summary.openReports],
+      ["Suspended", summary.suspendedUsers],
       ["Messages", summary.messages]
     ];
     target.innerHTML = entries
@@ -285,7 +292,7 @@
 
   async function loadAdminData() {
     if (state.user?.role !== "admin") return;
-    await Promise.all([loadSummary(), loadProfiles(), loadCompanies()]);
+    await Promise.all([loadSummary(), loadProfiles(), loadCompanies(), loadOperations()]);
     setStatus("Admin profiles loaded.");
   }
 
@@ -338,6 +345,153 @@
     clearCompanyForm();
     await Promise.all([loadSummary(), loadCompanies()]);
     setStatus(result.message || "Company profile deleted.");
+  }
+
+  function renderOpsQueue(queue) {
+    state.queue = queue;
+    const target = $("#opsQueue");
+    if (!target) return;
+    const group = (title, html, empty) =>
+      `<h4 class="ops-group-title">${title}</h4>` +
+      (html ? `<div class="admin-record-grid">${html}</div>` : `<p class="muted">${empty}</p>`);
+    const profiles = (queue.profiles || [])
+      .map(
+        (p) =>
+          `<article class="admin-record-card"><div><h3>${escapeHtml(p.name || "Student")}</h3><p class="hint">${escapeHtml(p.programme || "")} · ${escapeHtml(p.email || p.ownerEmail || "")}</p></div><div class="card-actions"><button class="button primary" data-approve-profile="${escapeHtml(p.id)}" type="button">Approve</button><button class="button ghost" data-reject-profile="${escapeHtml(p.id)}" type="button">Reject</button></div></article>`
+      )
+      .join("");
+    const companies = (queue.companies || [])
+      .map(
+        (c) =>
+          `<article class="admin-record-card"><div><h3>${escapeHtml(c.companyName || "Company")}</h3><p class="hint">${escapeHtml(c.accountEmail || "")}</p></div><div class="card-actions"><button class="button primary" data-approve-company="${escapeHtml(c.id)}" type="button">Approve</button></div></article>`
+      )
+      .join("");
+    const opps = (queue.opportunities || [])
+      .map(
+        (o) =>
+          `<article class="admin-record-card"><div><h3>${escapeHtml(o.title || "Opportunity")}</h3><p class="hint">${escapeHtml(o.organization || "")}</p></div><div class="card-actions"><button class="button primary" data-approve-opp="${escapeHtml(o.id)}" type="button">Approve</button><button class="button ghost" data-reject-opp="${escapeHtml(o.id)}" type="button">Reject</button></div></article>`
+      )
+      .join("");
+    target.innerHTML =
+      group("Student profiles", profiles, "No pending profiles.") +
+      group("Company profiles", companies, "No pending companies.") +
+      group("Opportunities", opps, "No pending opportunities.");
+  }
+
+  function renderOpsUsers(users) {
+    state.users = users;
+    const target = $("#opsUsers");
+    if (!target) return;
+    target.innerHTML = users.length
+      ? users
+          .map(
+            (u) =>
+              `<article class="admin-record-card"><div><h3>${escapeHtml(u.name || "User")}</h3><p class="hint">${escapeHtml(u.email)} · ${escapeHtml(u.role)}</p><div class="badge-list"><span class="badge status-${u.suspended ? "rejected" : "approved"}">${u.suspended ? "suspended" : "active"}</span></div>${u.suspended && u.suspendedReason ? `<p class="muted">Reason: ${escapeHtml(u.suspendedReason)}</p>` : ""}</div><div class="card-actions">${u.role === "admin" ? `<span class="hint">admin</span>` : u.suspended ? `<button class="button primary" data-reactivate-user="${escapeHtml(u.id)}" type="button">Reactivate</button>` : `<button class="button danger" data-suspend-user="${escapeHtml(u.id)}" type="button">Suspend</button>`}</div></article>`
+          )
+          .join("")
+      : `<article class="admin-record-card"><h3>No accounts found</h3></article>`;
+  }
+
+  function renderOpsBackups(backups) {
+    state.backups = backups;
+    const target = $("#opsBackups");
+    if (!target) return;
+    target.innerHTML = backups.length
+      ? `<div class="admin-record-grid">` +
+        backups
+          .map(
+            (b) =>
+              `<article class="admin-record-card"><div><h3>${escapeHtml(b.name || b.id)}</h3><p class="hint">${escapeHtml(new Date(b.createdAt).toLocaleString())} · ${b.exists ? "available" : "missing"}</p></div><div class="card-actions">${b.exists ? `<button class="button ghost" data-restore-backup="${escapeHtml(b.name)}" type="button">Restore</button>` : ""}</div></article>`
+          )
+          .join("") +
+        `</div>`
+      : `<p class="muted">No backups yet. Create one to enable recovery.</p>`;
+  }
+
+  function renderOpsAudit(entries) {
+    const target = $("#opsAudit");
+    if (!target) return;
+    target.innerHTML = entries.length
+      ? `<ul class="audit-list">` +
+        entries
+          .map(
+            (e) =>
+              `<li><code>${escapeHtml(e.action)}</code> — ${escapeHtml(e.actorEmail || "system")} <span class="hint">${escapeHtml(new Date(e.createdAt).toLocaleString())}</span></li>`
+          )
+          .join("") +
+        `</ul>`
+      : `<p class="muted">No audit entries.</p>`;
+  }
+
+  async function loadQueue() {
+    renderOpsQueue(await api("/api/admin/queue"));
+  }
+
+  async function loadOpsUsers() {
+    const params = queryFromForm($("#opsUserFilters"));
+    const { users } = await api(`/api/admin/users?${params.toString()}`);
+    renderOpsUsers(users);
+  }
+
+  async function loadBackups() {
+    const { backups } = await api("/api/admin/backups");
+    renderOpsBackups(backups);
+  }
+
+  async function loadAudit() {
+    const params = queryFromForm($("#opsAuditFilters"));
+    params.set("pageSize", "50");
+    const { entries } = await api(`/api/admin/audit?${params.toString()}`);
+    renderOpsAudit(entries);
+  }
+
+  async function loadOperations() {
+    if (state.user?.role !== "admin") return;
+    await Promise.all([loadQueue(), loadOpsUsers(), loadBackups(), loadAudit()]);
+  }
+
+  async function moderateProfile(id, status) {
+    await api(`/api/admin/profiles/${encodeURIComponent(id)}/status`, { method: "POST", body: { status } });
+    await Promise.all([loadSummary(), loadProfiles(), loadQueue()]);
+    setStatus(`Profile ${status}.`);
+  }
+
+  async function approveCompany(id) {
+    await api(`/api/admin/companies/${encodeURIComponent(id)}/status`, { method: "POST", body: { approved: true } });
+    await Promise.all([loadSummary(), loadCompanies(), loadQueue()]);
+    setStatus("Company approved.");
+  }
+
+  async function moderateOpportunity(id, status) {
+    await api(`/api/admin/opportunities/${encodeURIComponent(id)}/status`, { method: "POST", body: { status } });
+    await Promise.all([loadSummary(), loadQueue()]);
+    setStatus(`Opportunity ${status}.`);
+  }
+
+  async function suspendUser(id) {
+    const reason = window.prompt("Reason for suspension (optional):") || "";
+    await api(`/api/admin/users/${encodeURIComponent(id)}/suspend`, { method: "POST", body: { reason } });
+    await Promise.all([loadSummary(), loadOpsUsers()]);
+    setStatus("Account suspended.");
+  }
+
+  async function reactivateUser(id) {
+    await api(`/api/admin/users/${encodeURIComponent(id)}/reactivate`, { method: "POST" });
+    await Promise.all([loadSummary(), loadOpsUsers()]);
+    setStatus("Account reactivated.");
+  }
+
+  async function createBackup() {
+    const result = await api("/api/admin/backup", { method: "POST" });
+    await Promise.all([loadSummary(), loadBackups()]);
+    setStatus(result.message || "Backup created.");
+  }
+
+  async function restoreBackup(name) {
+    if (!window.confirm("Restore this backup? This replaces ALL current data.")) return;
+    const result = await api("/api/admin/restore", { method: "POST", body: { name, confirm: true } });
+    await loadAdminData();
+    setStatus(result.message || "Backup restored.");
   }
 
   function bindEvents() {
@@ -409,6 +563,38 @@
       if (remove) {
         deleteCompany(remove.dataset.deleteCompany).catch((error) => setStatus(error.message));
       }
+    });
+    $("#refreshOperations")?.addEventListener("click", () => loadOperations().catch((error) => setStatus(error.message)));
+    $("#createBackup")?.addEventListener("click", () => createBackup().catch((error) => setStatus(error.message)));
+    $("#opsUserFilters")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadOpsUsers().catch((error) => setStatus(error.message));
+    });
+    $("#opsAuditFilters")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadAudit().catch((error) => setStatus(error.message));
+    });
+    $("#opsQueue")?.addEventListener("click", (event) => {
+      const ap = event.target.closest("[data-approve-profile]");
+      const rp = event.target.closest("[data-reject-profile]");
+      const ac = event.target.closest("[data-approve-company]");
+      const ao = event.target.closest("[data-approve-opp]");
+      const ro = event.target.closest("[data-reject-opp]");
+      if (ap) moderateProfile(ap.dataset.approveProfile, "approved").catch((error) => setStatus(error.message));
+      if (rp) moderateProfile(rp.dataset.rejectProfile, "rejected").catch((error) => setStatus(error.message));
+      if (ac) approveCompany(ac.dataset.approveCompany).catch((error) => setStatus(error.message));
+      if (ao) moderateOpportunity(ao.dataset.approveOpp, "approved").catch((error) => setStatus(error.message));
+      if (ro) moderateOpportunity(ro.dataset.rejectOpp, "rejected").catch((error) => setStatus(error.message));
+    });
+    $("#opsUsers")?.addEventListener("click", (event) => {
+      const suspend = event.target.closest("[data-suspend-user]");
+      const reactivate = event.target.closest("[data-reactivate-user]");
+      if (suspend) suspendUser(suspend.dataset.suspendUser).catch((error) => setStatus(error.message));
+      if (reactivate) reactivateUser(reactivate.dataset.reactivateUser).catch((error) => setStatus(error.message));
+    });
+    $("#opsBackups")?.addEventListener("click", (event) => {
+      const restore = event.target.closest("[data-restore-backup]");
+      if (restore) restoreBackup(restore.dataset.restoreBackup).catch((error) => setStatus(error.message));
     });
   }
 

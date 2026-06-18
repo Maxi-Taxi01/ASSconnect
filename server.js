@@ -5,15 +5,20 @@ const path = require("path");
 
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
-const DATA_DIR = path.join(ROOT_DIR, "data");
-const DEFAULT_DB_FILE = path.join(DATA_DIR, "app-db.json");
-const DEFAULT_UPLOADS_DIR = path.join(ROOT_DIR, "uploads");
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT_DIR, "data");
+const DEFAULT_DB_FILE = process.env.DB_FILE ? path.resolve(process.env.DB_FILE) : path.join(DATA_DIR, "app-db.json");
+const DEFAULT_UPLOADS_DIR = process.env.UPLOADS_DIR ? path.resolve(process.env.UPLOADS_DIR) : path.join(ROOT_DIR, "uploads");
 const PORT = Number(process.env.PORT || 4173);
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 const TOKEN_TTL_MS = 1000 * 60 * 60;
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 1000 * 60 * 15;
+const DEFAULT_PAGE_SIZE = 24;
+const MAX_PAGE_SIZE = 100;
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -32,6 +37,20 @@ const MIME_TYPES = {
 };
 
 const rateBuckets = new Map();
+const loginAttempts = new Map();
+
+const COMMON_PASSWORDS = new Set([
+  "password",
+  "password1",
+  "12345678",
+  "123456789",
+  "qwerty123",
+  "111111111",
+  "letmein123",
+  "iloveyou1",
+  "admin1234",
+  "welcome123"
+]);
 
 function nowIso() {
   return new Date().toISOString();
@@ -73,6 +92,90 @@ function boolValue(value) {
   return value === true || value === "true" || value === "on" || value === "1";
 }
 
+function validatePassword(password) {
+  const value = String(password || "");
+  if (value.length < 8) return "Password must be at least 8 characters.";
+  if (value.length > 200) return "Password is too long.";
+  if (!/[a-zA-Z]/.test(value) || !/\d/.test(value)) {
+    return "Password must include at least one letter and one number.";
+  }
+  if (COMMON_PASSWORDS.has(value.toLowerCase())) return "Choose a less common password.";
+  return "";
+}
+
+function loginLockState(email) {
+  const record = loginAttempts.get(email);
+  if (!record || !record.lockedUntil) return { locked: false };
+  if (record.lockedUntil > Date.now()) {
+    return { locked: true, retryAfterSeconds: Math.ceil((record.lockedUntil - Date.now()) / 1000) };
+  }
+  return { locked: false };
+}
+
+function recordLoginFailure(email) {
+  const now = Date.now();
+  const record = loginAttempts.get(email) || { count: 0, firstAt: now, lockedUntil: 0 };
+  if (now - record.firstAt > LOGIN_LOCKOUT_MS) {
+    record.count = 0;
+    record.firstAt = now;
+    record.lockedUntil = 0;
+  }
+  record.count += 1;
+  if (record.count >= MAX_LOGIN_ATTEMPTS) record.lockedUntil = now + LOGIN_LOCKOUT_MS;
+  loginAttempts.set(email, record);
+}
+
+function clearLoginFailures(email) {
+  loginAttempts.delete(email);
+}
+
+function sortItems(items, sort) {
+  const arr = items.slice();
+  const time = (value) => new Date(value || 0).getTime();
+  const label = (item) => String(item.name || item.companyName || item.title || "").toLowerCase();
+  switch (String(sort || "").toLowerCase()) {
+    case "oldest":
+      arr.sort((a, b) => time(a.createdAt) - time(b.createdAt));
+      break;
+    case "name":
+    case "company":
+      arr.sort((a, b) => label(a).localeCompare(label(b)));
+      break;
+    case "programme":
+      arr.sort((a, b) => String(a.programme || "").localeCompare(String(b.programme || "")));
+      break;
+    case "availability":
+      arr.sort((a, b) => time(a.availabilityDate) - time(b.availabilityDate));
+      break;
+    case "deadline":
+      arr.sort((a, b) => time(a.deadline) - time(b.deadline));
+      break;
+    case "newest":
+    default:
+      arr.sort((a, b) => time(b.createdAt) - time(a.createdAt));
+      break;
+  }
+  return arr;
+}
+
+function paginate(items, query) {
+  const total = items.length;
+  const pageRaw = query.get("page");
+  const pageSizeRaw = query.get("pageSize");
+  if (pageRaw === null && pageSizeRaw === null) {
+    return { items, pagination: { total, page: 1, pageSize: total, pages: total > 0 ? 1 : 0 } };
+  }
+  let pageSize = parseInt(pageSizeRaw || "", 10);
+  if (!Number.isFinite(pageSize) || pageSize <= 0) pageSize = DEFAULT_PAGE_SIZE;
+  pageSize = Math.min(pageSize, MAX_PAGE_SIZE);
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  let page = parseInt(pageRaw || "1", 10);
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  page = Math.min(page, pages);
+  const start = (page - 1) * pageSize;
+  return { items: items.slice(start, start + pageSize), pagination: { total, page, pageSize, pages } };
+}
+
 function safeUser(user) {
   if (!user) return null;
   return {
@@ -82,6 +185,8 @@ function safeUser(user) {
     role: user.role,
     companyName: user.companyName || "",
     emailVerified: Boolean(user.emailVerified),
+    suspended: Boolean(user.suspendedAt),
+    suspendedReason: user.suspendedReason || "",
     createdAt: user.createdAt
   };
 }
@@ -106,17 +211,55 @@ function ensureRuntimeDirs(dbFile, uploadsDir) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+function seedAdminPassword() {
+  const fromEnv = String(process.env.ADMIN_PASSWORD || "");
+  if (fromEnv) return fromEnv;
+  if (IS_PRODUCTION) {
+    const generated = crypto.randomBytes(18).toString("base64url");
+    console.warn(
+      "[ASSconnect] No ADMIN_PASSWORD set in production. A random admin password was generated; " +
+        "use the password-reset flow to set a known one."
+    );
+    return generated;
+  }
+  return "Admin123!";
+}
+
 function baseDb() {
   const createdAt = nowIso();
   const admin = {
     id: "user_admin",
-    name: "ASSconnect Admin",
-    email: "admin@assconnect.local",
+    name: cleanText(process.env.ADMIN_NAME) || "ASSconnect Admin",
+    email: normalizeEmail(process.env.ADMIN_EMAIL) || "admin@assconnect.local",
     role: "admin",
-    passwordHash: hashPassword("Admin123!"),
+    passwordHash: hashPassword(seedAdminPassword()),
     emailVerified: true,
     createdAt
   };
+
+  const db = {
+    version: 1,
+    createdAt,
+    users: [admin],
+    sessions: [],
+    verificationTokens: [],
+    resetTokens: [],
+    profiles: [],
+    companies: [],
+    opportunities: [],
+    messages: [],
+    reports: [],
+    analytics: [],
+    backups: [],
+    blocks: [],
+    mailOutbox: [],
+    auditLog: []
+  };
+
+  // Demo accounts and seed content are for local development only. They are
+  // never created in production so launches start from a clean, secure state.
+  if (IS_PRODUCTION) return db;
+
   const professional = {
     id: "user_professional",
     name: "Demo Professional",
@@ -137,89 +280,85 @@ function baseDb() {
     emailVerified: true,
     createdAt
   };
-
-  return {
-    version: 1,
+  db.users.push(professional, student);
+  db.profiles.push({
+    id: "profile_student",
+    userId: "user_student",
+    name: "Demo Student",
+    programme: "Applied Physics",
+    phase: "Graduation project",
+    studyYear: "MSc 2",
+    looking: "Graduation project",
+    availability: "From September 2026, 32 h/week",
+    availabilityDate: "2026-09-01",
+    location: "Delft",
+    remotePreference: "Hybrid",
+    languages: ["Dutch", "English"],
+    skills: ["Python", "sensor systems", "data analysis"],
+    bio: "Applied physics student looking for an industry graduation project in sensing, photonics or measurement systems.",
+    email: "student@assconnect.local",
+    phone: "+31 6 0000 0000",
+    linkedin: "https://www.linkedin.com/",
+    photoUrl: "assets/baller.png",
+    cvUrl: "",
+    visible: true,
+    consentContact: true,
+    moderationStatus: "approved",
+    moderationNote: "",
     createdAt,
-    users: [admin, professional, student],
-    sessions: [],
-    verificationTokens: [],
-    resetTokens: [],
-    profiles: [
-      {
-        id: "profile_student",
-        userId: "user_student",
-        name: "Demo Student",
-        programme: "Applied Physics",
-        phase: "Graduation project",
-        studyYear: "MSc 2",
-        looking: "Graduation project",
-        availability: "From September 2026, 32 h/week",
-        availabilityDate: "2026-09-01",
-        location: "Delft",
-        remotePreference: "Hybrid",
-        languages: ["Dutch", "English"],
-        skills: ["Python", "sensor systems", "data analysis"],
-        bio: "Applied physics student looking for an industry graduation project in sensing, photonics or measurement systems.",
-        email: "student@assconnect.local",
-        phone: "+31 6 0000 0000",
-        linkedin: "https://www.linkedin.com/",
-        photoUrl: "assets/baller.png",
-        cvUrl: "",
-        visible: true,
-        consentContact: true,
-        moderationStatus: "approved",
-        moderationNote: "",
-        createdAt,
-        updatedAt: createdAt
-      }
-    ],
-    companies: [
-      {
-        id: "company_demo",
-        userId: "user_professional",
-        companyName: "Applied Science Partners",
-        website: "https://example.com",
-        sectors: ["Research", "biotech", "energy"],
-        description: "Industry partner offering applied research assignments for science students.",
-        approved: true,
-        createdAt,
-        updatedAt: createdAt
-      }
-    ],
-    opportunities: [
-      {
-        id: "opp_demo",
-        userId: "user_professional",
-        title: "Graduation project: sensor data pipeline",
-        organization: "Applied Science Partners",
-        type: "Graduation project",
-        programme: "Applied Physics",
-        location: "Delft",
-        remotePreference: "Hybrid",
-        deadline: "2026-09-30",
-        link: "https://example.com",
-        description: "Build and validate a prototype data workflow for experimental sensor measurements.",
-        moderationStatus: "approved",
-        createdAt,
-        updatedAt: createdAt
-      }
-    ],
-    messages: [],
-    reports: [],
-    analytics: [],
-    backups: [],
-    mailOutbox: [],
-    auditLog: []
-  };
+    updatedAt: createdAt
+  });
+  db.companies.push({
+    id: "company_demo",
+    userId: "user_professional",
+    companyName: "Applied Science Partners",
+    website: "https://example.com",
+    sectors: ["Research", "biotech", "energy"],
+    description: "Industry partner offering applied research assignments for science students.",
+    approved: true,
+    createdAt,
+    updatedAt: createdAt
+  });
+  db.opportunities.push({
+    id: "opp_demo",
+    userId: "user_professional",
+    title: "Graduation project: sensor data pipeline",
+    organization: "Applied Science Partners",
+    type: "Graduation project",
+    programme: "Applied Physics",
+    location: "Delft",
+    remotePreference: "Hybrid",
+    deadline: "2026-09-30",
+    link: "https://example.com",
+    description: "Build and validate a prototype data workflow for experimental sensor measurements.",
+    moderationStatus: "approved",
+    createdAt,
+    updatedAt: createdAt
+  });
+  return db;
 }
+
+const COLLECTION_KEYS = [
+  "users",
+  "sessions",
+  "verificationTokens",
+  "resetTokens",
+  "profiles",
+  "companies",
+  "opportunities",
+  "messages",
+  "reports",
+  "analytics",
+  "backups",
+  "blocks",
+  "mailOutbox",
+  "auditLog"
+];
 
 function loadDb(dbFile = DEFAULT_DB_FILE) {
   if (!fs.existsSync(dbFile)) return baseDb();
   const parsed = JSON.parse(fs.readFileSync(dbFile, "utf8"));
-  const defaults = baseDb();
-  for (const key of Object.keys(defaults)) {
-    if (!Array.isArray(defaults[key])) continue;
+  for (const key of COLLECTION_KEYS) {
     if (!Array.isArray(parsed[key])) parsed[key] = [];
   }
   parsed.version = parsed.version || 1;
@@ -327,7 +466,7 @@ function getAuthUser(db, req) {
   if (!match) return null;
   const session = db.sessions.find((item) => item.tokenHash === tokenHash(match[1]));
   if (!session || new Date(session.expiresAt).getTime() <= Date.now()) return null;
-  return db.users.find((user) => user.id === session.userId && !user.deletedAt) || null;
+  return db.users.find((user) => user.id === session.userId && !user.deletedAt && !user.suspendedAt) || null;
 }
 
 function requireAuth(db, req, res) {
@@ -655,8 +794,13 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         json(res, 400, { error: "Choose student or professional." });
         return;
       }
-      if (!email || !cleanText(body.name) || String(body.password || "").length < 8) {
-        json(res, 400, { error: "Name, email and an 8 character password are required." });
+      if (!email || !cleanText(body.name)) {
+        json(res, 400, { error: "Name and email are required." });
+        return;
+      }
+      const passwordError = validatePassword(body.password);
+      if (passwordError) {
+        json(res, 400, { error: passwordError });
         return;
       }
       if (db.users.some((user) => user.email === email && !user.deletedAt)) {
@@ -721,15 +865,28 @@ async function handleApi(req, res, dbFile, uploadsDir) {
     if (method === "POST" && pathName === "/api/auth/login") {
       const body = await readBody(req);
       const email = normalizeEmail(body.email);
+      const lock = loginLockState(email);
+      if (lock.locked) {
+        json(res, 429, {
+          error: `Too many failed attempts. Try again in about ${Math.ceil(lock.retryAfterSeconds / 60)} minute(s).`
+        });
+        return;
+      }
       const user = db.users.find((item) => item.email === email && !item.deletedAt);
       if (!user || !verifyPassword(body.password, user.passwordHash)) {
+        recordLoginFailure(email);
         json(res, 401, { error: "Incorrect email or password." });
+        return;
+      }
+      if (user.suspendedAt) {
+        json(res, 403, { error: "This account is suspended. Contact an administrator." });
         return;
       }
       if (!user.emailVerified) {
         json(res, 403, { error: "Verify your email before logging in." });
         return;
       }
+      clearLoginFailures(email);
       const token = crypto.randomBytes(32).toString("hex");
       db.sessions.push({
         id: randomId("session"),
@@ -795,13 +952,19 @@ async function handleApi(req, res, dbFile, uploadsDir) {
           !item.usedAt &&
           new Date(item.expiresAt).getTime() > Date.now()
       );
-      if (!user || !token || String(body.newPassword || "").length < 8) {
-        json(res, 400, { error: "Reset code is invalid, expired or the password is too short." });
+      if (!user || !token) {
+        json(res, 400, { error: "Reset code is invalid or expired." });
+        return;
+      }
+      const resetPasswordError = validatePassword(body.newPassword);
+      if (resetPasswordError) {
+        json(res, 400, { error: resetPasswordError });
         return;
       }
       user.passwordHash = hashPassword(body.newPassword);
       token.usedAt = nowIso();
       db.sessions = db.sessions.filter((item) => item.userId !== user.id);
+      clearLoginFailures(user.email);
       audit(db, user.id, "auth.resetPassword");
       saveDb(db, dbFile);
       json(res, 200, { message: "Password reset. Please log in again." });
@@ -820,8 +983,13 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       const visibleProfiles = db.profiles.filter((profile) =>
         includeAll ? !profile.deletedAt : profile.visible && !profile.deletedAt && profile.moderationStatus === "approved"
       );
-      const profiles = filterProfiles(visibleProfiles, parsed.searchParams).map((profile) => profileForViewer(profile, viewer));
-      json(res, 200, { profiles });
+      const filtered = sortItems(
+        filterProfiles(visibleProfiles, parsed.searchParams),
+        parsed.searchParams.get("sort") || "newest"
+      );
+      const { items, pagination } = paginate(filtered, parsed.searchParams);
+      const profiles = items.map((profile) => profileForViewer(profile, viewer));
+      json(res, 200, { profiles, pagination });
       return;
     }
 
@@ -943,7 +1111,12 @@ async function handleApi(req, res, dbFile, uploadsDir) {
 
     if (method === "GET" && pathName === "/api/companies") {
       const approved = db.companies.filter((company) => company.approved && !company.deletedAt);
-      json(res, 200, { companies: filterCompanies(approved, parsed.searchParams) });
+      const filtered = sortItems(
+        filterCompanies(approved, parsed.searchParams),
+        parsed.searchParams.get("sort") || "company"
+      );
+      const { items, pagination } = paginate(filtered, parsed.searchParams);
+      json(res, 200, { companies: items, pagination });
       return;
     }
 
@@ -961,25 +1134,47 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       const body = await readBody(req);
       const existing = db.companies.find((item) => item.userId === user.id);
       const company = existing || { id: randomId("company"), userId: user.id, createdAt: nowIso() };
+      const isAdmin = user.role === "admin";
       Object.assign(company, {
         companyName: cleanText(body.companyName || user.companyName),
         website: cleanText(body.website),
         sectors: splitList(body.sectors),
         description: cleanMultiline(body.description),
-        approved: true,
+        approved: isAdmin ? true : false,
         updatedAt: nowIso()
       });
       if (!existing) db.companies.push(company);
       user.companyName = company.companyName;
-      audit(db, user.id, "company.save", { companyId: company.id });
+      audit(db, user.id, "company.save", { companyId: company.id, approved: company.approved });
       saveDb(db, dbFile);
-      json(res, 200, { company, message: "Company profile saved." });
+      json(res, 200, {
+        company,
+        message: company.approved
+          ? "Company profile saved."
+          : "Company profile saved and sent to admin moderation. It will appear in the directory once approved."
+      });
       return;
     }
 
     if (method === "GET" && pathName === "/api/opportunities") {
-      const approved = db.opportunities.filter((item) => item.moderationStatus === "approved");
-      json(res, 200, { opportunities: filterOpportunities(approved, parsed.searchParams) });
+      const approved = db.opportunities.filter((item) => item.moderationStatus === "approved" && !item.deletedAt);
+      const filtered = sortItems(
+        filterOpportunities(approved, parsed.searchParams),
+        parsed.searchParams.get("sort") || "deadline"
+      );
+      const { items, pagination } = paginate(filtered, parsed.searchParams);
+      json(res, 200, { opportunities: items, pagination });
+      return;
+    }
+
+    if (method === "GET" && pathName === "/api/opportunities/mine") {
+      const user = requireAuth(db, req, res);
+      if (!user || !requireRole(user, ["professional", "admin"], res)) return;
+      const own = sortItems(
+        db.opportunities.filter((item) => item.userId === user.id && !item.deletedAt),
+        "newest"
+      );
+      json(res, 200, { opportunities: own });
       return;
     }
 
@@ -1014,6 +1209,58 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       return;
     }
 
+    const opportunityItemMatch = pathName.match(/^\/api\/opportunities\/([^/]+)$/);
+    if (opportunityItemMatch && (method === "PUT" || method === "DELETE")) {
+      const user = requireAuth(db, req, res);
+      if (!user || !requireRole(user, ["professional", "admin"], res)) return;
+      const opportunity = db.opportunities.find((item) => item.id === opportunityItemMatch[1] && !item.deletedAt);
+      if (!opportunity) {
+        notFound(res);
+        return;
+      }
+      if (opportunity.userId !== user.id && user.role !== "admin") {
+        json(res, 403, { error: "You can only manage opportunities you posted." });
+        return;
+      }
+      if (method === "DELETE") {
+        opportunity.deletedAt = nowIso();
+        opportunity.moderationStatus = "withdrawn";
+        opportunity.updatedAt = nowIso();
+        audit(db, user.id, "opportunity.delete", { opportunityId: opportunity.id });
+        saveDb(db, dbFile);
+        json(res, 200, { ok: true, message: "Opportunity withdrawn." });
+        return;
+      }
+      const body = await readBody(req);
+      if (!cleanText(body.title)) {
+        json(res, 400, { error: "Opportunity title is required." });
+        return;
+      }
+      Object.assign(opportunity, {
+        title: cleanText(body.title),
+        organization: cleanText(body.organization || user.companyName || opportunity.organization),
+        type: cleanText(body.type),
+        programme: cleanText(body.programme),
+        location: cleanText(body.location),
+        remotePreference: cleanText(body.remotePreference),
+        deadline: cleanText(body.deadline),
+        link: cleanText(body.link),
+        description: cleanMultiline(body.description),
+        moderationStatus: user.role === "admin" ? opportunity.moderationStatus : "pending",
+        updatedAt: nowIso()
+      });
+      audit(db, user.id, "opportunity.update", { opportunityId: opportunity.id });
+      saveDb(db, dbFile);
+      json(res, 200, {
+        opportunity,
+        message:
+          user.role === "admin"
+            ? "Opportunity updated."
+            : "Opportunity updated and sent back to admin moderation."
+      });
+      return;
+    }
+
     const contactMatch = pathName.match(/^\/api\/students\/([^/]+)\/contact$/);
     if (method === "POST" && contactMatch) {
       const user = requireAuth(db, req, res);
@@ -1023,6 +1270,13 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       );
       if (!profile) {
         notFound(res);
+        return;
+      }
+      const blockedByOwner = db.blocks.some(
+        (item) => item.ownerUserId === profile.userId && item.blockedUserId === user.id
+      );
+      if (blockedByOwner && user.role !== "admin") {
+        json(res, 403, { error: "You can no longer contact this person." });
         return;
       }
       const body = await readBody(req);
@@ -1098,6 +1352,75 @@ async function handleApi(req, res, dbFile, uploadsDir) {
           ? db.messages
           : db.messages.filter((item) => item.fromUserId === user.id || item.toUserId === user.id);
       json(res, 200, { messages });
+      return;
+    }
+
+    if (method === "GET" && pathName === "/api/blocks") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const blocks = db.blocks
+        .filter((item) => item.ownerUserId === user.id)
+        .map((item) => {
+          const blockedUser = db.users.find((candidate) => candidate.id === item.blockedUserId);
+          return {
+            id: item.id,
+            blockedUserId: item.blockedUserId,
+            blockedName: blockedUser?.name || "Unknown user",
+            blockedEmail: blockedUser?.email || "",
+            createdAt: item.createdAt
+          };
+        });
+      json(res, 200, { blocks });
+      return;
+    }
+
+    if (method === "POST" && pathName === "/api/blocks") {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const body = await readBody(req);
+      const targetId = cleanText(body.userId);
+      if (!targetId || targetId === user.id) {
+        json(res, 400, { error: "Choose a valid account to block." });
+        return;
+      }
+      const target = db.users.find((item) => item.id === targetId && !item.deletedAt);
+      if (!target) {
+        json(res, 404, { error: "That account was not found." });
+        return;
+      }
+      const existing = db.blocks.find(
+        (item) => item.ownerUserId === user.id && item.blockedUserId === targetId
+      );
+      if (existing) {
+        json(res, 200, { ok: true, block: existing, message: "This account is already blocked." });
+        return;
+      }
+      const block = {
+        id: randomId("block"),
+        ownerUserId: user.id,
+        blockedUserId: targetId,
+        createdAt: nowIso()
+      };
+      db.blocks.push(block);
+      audit(db, user.id, "block.create", { blockedUserId: targetId });
+      saveDb(db, dbFile);
+      json(res, 201, { ok: true, block, message: "Account blocked. They can no longer contact you." });
+      return;
+    }
+
+    const blockItemMatch = pathName.match(/^\/api\/blocks\/([^/]+)$/);
+    if (method === "DELETE" && blockItemMatch) {
+      const user = requireAuth(db, req, res);
+      if (!user) return;
+      const block = db.blocks.find((item) => item.id === blockItemMatch[1] && item.ownerUserId === user.id);
+      if (!block) {
+        notFound(res);
+        return;
+      }
+      db.blocks = db.blocks.filter((item) => item.id !== block.id);
+      audit(db, user.id, "block.remove", { blockedUserId: block.blockedUserId });
+      saveDb(db, dbFile);
+      json(res, 200, { ok: true, message: "Block removed." });
       return;
     }
 
@@ -1296,8 +1619,10 @@ async function handleApi(req, res, dbFile, uploadsDir) {
           students: db.profiles.filter((item) => !item.deletedAt).length,
           professionals: db.users.filter((item) => item.role === "professional" && !item.deletedAt).length,
           pendingProfiles: db.profiles.filter((item) => item.moderationStatus === "pending").length,
+          pendingCompanies: db.companies.filter((item) => !item.approved && !item.deletedAt).length,
           pendingOpportunities: db.opportunities.filter((item) => item.moderationStatus === "pending").length,
           openReports: db.reports.filter((item) => item.status === "open").length,
+          suspendedUsers: db.users.filter((item) => item.suspendedAt && !item.deletedAt).length,
           messages: db.messages.length,
           analyticsEvents: db.analytics.length,
           backups: db.backups.length
@@ -1308,7 +1633,8 @@ async function handleApi(req, res, dbFile, uploadsDir) {
       if (method === "GET" && pathName === "/api/admin/queue") {
         json(res, 200, {
           profiles: db.profiles.filter((item) => item.moderationStatus === "pending" && !item.deletedAt),
-          opportunities: db.opportunities.filter((item) => item.moderationStatus === "pending"),
+          companies: db.companies.filter((item) => !item.approved && !item.deletedAt).map((company) => companyForAdmin(db, company)),
+          opportunities: db.opportunities.filter((item) => item.moderationStatus === "pending" && !item.deletedAt),
           reports: db.reports.filter((item) => item.status === "open"),
           users: db.users.filter((item) => !item.deletedAt).map(safeUser)
         });
@@ -1403,6 +1729,164 @@ async function handleApi(req, res, dbFile, uploadsDir) {
         audit(db, user.id, "admin.retention", { before, after });
         saveDb(db, dbFile);
         json(res, 200, { before, after, message: "Retention cleanup complete." });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/audit") {
+        const q = cleanText(parsed.searchParams.get("q")).toLowerCase();
+        const action = cleanText(parsed.searchParams.get("action")).toLowerCase();
+        const emailById = new Map(db.users.map((item) => [item.id, item.email]));
+        let entries = db.auditLog
+          .slice()
+          .reverse()
+          .map((entry) => ({
+            ...entry,
+            actorEmail: emailById.get(entry.actorUserId) || (entry.actorUserId === "system" ? "system" : "unknown")
+          }));
+        if (action) entries = entries.filter((entry) => String(entry.action || "").toLowerCase().includes(action));
+        if (q) {
+          entries = entries.filter((entry) =>
+            `${entry.action} ${entry.actorEmail} ${JSON.stringify(entry.details || {})}`.toLowerCase().includes(q)
+          );
+        }
+        const { items, pagination } = paginate(entries, parsed.searchParams);
+        json(res, 200, { entries: items, pagination });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/users") {
+        const q = cleanText(parsed.searchParams.get("q")).toLowerCase();
+        const role = cleanText(parsed.searchParams.get("role")).toLowerCase();
+        let users = db.users.filter((item) => !item.deletedAt);
+        if (role && role !== "all") users = users.filter((item) => item.role === role);
+        if (q) {
+          users = users.filter((item) =>
+            `${item.name} ${item.email} ${item.companyName || ""}`.toLowerCase().includes(q)
+          );
+        }
+        json(res, 200, { users: sortItems(users, "name").map(safeUser) });
+        return;
+      }
+
+      const companyStatusMatch = pathName.match(/^\/api\/admin\/companies\/([^/]+)\/status$/);
+      if (method === "POST" && companyStatusMatch) {
+        const body = await readBody(req);
+        const company = db.companies.find((item) => item.id === companyStatusMatch[1] && !item.deletedAt);
+        if (!company) {
+          notFound(res);
+          return;
+        }
+        company.approved = boolValue(body.approved);
+        company.updatedAt = nowIso();
+        audit(db, user.id, "admin.companyStatus", { companyId: company.id, approved: company.approved });
+        saveDb(db, dbFile);
+        json(res, 200, { company: companyForAdmin(db, company) });
+        return;
+      }
+
+      const userSuspendMatch = pathName.match(/^\/api\/admin\/users\/([^/]+)\/suspend$/);
+      if (method === "POST" && userSuspendMatch) {
+        const body = await readBody(req);
+        const target = db.users.find((item) => item.id === userSuspendMatch[1] && !item.deletedAt);
+        if (!target) {
+          notFound(res);
+          return;
+        }
+        if (target.id === user.id) {
+          json(res, 400, { error: "You cannot suspend your own account." });
+          return;
+        }
+        if (target.role === "admin") {
+          json(res, 400, { error: "Admin accounts cannot be suspended from here." });
+          return;
+        }
+        target.suspendedAt = nowIso();
+        target.suspendedReason = cleanText(body.reason);
+        target.suspendedByUserId = user.id;
+        db.sessions = db.sessions.filter((item) => item.userId !== target.id);
+        audit(db, user.id, "admin.userSuspend", { targetUserId: target.id, reason: target.suspendedReason });
+        saveDb(db, dbFile);
+        json(res, 200, { user: safeUser(target), message: "Account suspended." });
+        return;
+      }
+
+      const userReactivateMatch = pathName.match(/^\/api\/admin\/users\/([^/]+)\/reactivate$/);
+      if (method === "POST" && userReactivateMatch) {
+        const target = db.users.find((item) => item.id === userReactivateMatch[1] && !item.deletedAt);
+        if (!target) {
+          notFound(res);
+          return;
+        }
+        delete target.suspendedAt;
+        delete target.suspendedReason;
+        delete target.suspendedByUserId;
+        audit(db, user.id, "admin.userReactivate", { targetUserId: target.id });
+        saveDb(db, dbFile);
+        json(res, 200, { user: safeUser(target), message: "Account reactivated." });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/backups") {
+        const backups = db.backups
+          .map((backup) => ({
+            id: backup.id,
+            file: backup.file,
+            name: path.basename(backup.file || ""),
+            createdAt: backup.createdAt,
+            exists: Boolean(backup.file && fs.existsSync(backup.file))
+          }))
+          .reverse();
+        json(res, 200, { backups });
+        return;
+      }
+
+      if (method === "POST" && pathName === "/api/admin/restore") {
+        const body = await readBody(req);
+        if (!boolValue(body.confirm)) {
+          json(res, 400, { error: "Restore requires explicit confirmation." });
+          return;
+        }
+        let restored = null;
+        if (body.name) {
+          const safeName = path.basename(cleanText(body.name));
+          const candidate = path.join(path.dirname(dbFile), safeName);
+          if (!safeName.startsWith("backup-") || !safeName.endsWith(".json") || !fs.existsSync(candidate)) {
+            json(res, 404, { error: "Backup file not found." });
+            return;
+          }
+          restored = JSON.parse(fs.readFileSync(candidate, "utf8"));
+        } else if (body.db && typeof body.db === "object") {
+          restored = body.db;
+        }
+        if (!restored || !Array.isArray(restored.users)) {
+          json(res, 400, { error: "Provide a valid backup name or backup contents to restore." });
+          return;
+        }
+        for (const key of COLLECTION_KEYS) {
+          if (!Array.isArray(restored[key])) restored[key] = [];
+        }
+        restored.version = restored.version || 1;
+        restored.createdAt = restored.createdAt || nowIso();
+        audit(restored, user.id, "admin.restore", { source: body.name ? path.basename(body.name) : "inline" });
+        saveDb(restored, dbFile);
+        json(res, 200, {
+          message: "Backup restored.",
+          summary: { users: restored.users.length, profiles: restored.profiles.length, companies: restored.companies.length }
+        });
+        return;
+      }
+
+      if (method === "GET" && pathName === "/api/admin/blocks") {
+        const nameById = new Map(db.users.map((item) => [item.id, { name: item.name, email: item.email }]));
+        const blocks = db.blocks.map((item) => ({
+          id: item.id,
+          ownerUserId: item.ownerUserId,
+          ownerEmail: nameById.get(item.ownerUserId)?.email || "",
+          blockedUserId: item.blockedUserId,
+          blockedEmail: nameById.get(item.blockedUserId)?.email || "",
+          createdAt: item.createdAt
+        }));
+        json(res, 200, { blocks });
         return;
       }
     }

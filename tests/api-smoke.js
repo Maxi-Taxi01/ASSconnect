@@ -234,7 +234,7 @@ async function main() {
       password: "Student456!"
     });
 
-    await request(
+    const companySave = await request(
       "POST",
       "/api/company",
       {
@@ -244,6 +244,18 @@ async function main() {
         description: "A professional account visible across browsers."
       },
       professionalLogin.token
+    );
+    assert.equal(companySave.company.approved, false, "professional company profiles start pending");
+    const hiddenCompanies = await request("GET", "/api/companies?q=server&sector=energy");
+    assert.ok(
+      !hiddenCompanies.companies.some((company) => company.companyName === "Server Test Lab"),
+      "pending company must not appear in the public directory"
+    );
+    await request(
+      "POST",
+      `/api/admin/companies/${companySave.company.id}/status`,
+      { approved: true },
+      adminLogin.token
     );
     const companies = await request("GET", "/api/companies?q=server&sector=energy");
     assert.ok(companies.companies.some((company) => company.companyName === "Server Test Lab"));
