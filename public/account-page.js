@@ -136,10 +136,11 @@
 
   async function verifyEmail(event) {
     event.preventDefault();
-    const result = await api("/api/auth/verify", { method: "POST", body: formObject(event.currentTarget) });
+    const form = event.currentTarget;
+    const email = form.elements.email.value;
+    const result = await api("/api/auth/verify", { method: "POST", body: formObject(form) });
     setAuthTab("login");
     const loginForm = $("#loginForm");
-    const email = event.currentTarget.elements.email.value;
     if (loginForm) loginForm.elements.email.value = email;
     setStatus(result.message || "Email verified. Please log in.");
   }

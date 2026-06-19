@@ -4,7 +4,9 @@
   "description": "ASSconnect student and professional matching platform",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/static-smoke.js && node tests/api-smoke.js && node tests/feature-smoke.js && node tests/feature2-smoke.js"
+    "test": "node tests/static-smoke.js && node tests/api-smoke.js && node tests/feature-smoke.js && node tests/feature2-smoke.js && node tests/security-smoke.js",
+    "test:e2e": "node tests/e2e.js",
+    "test:a11y": "node tests/a11y-smoke.js"
   },
   "license": "UNLICENSED"
 }

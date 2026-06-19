@@ -18,7 +18,13 @@ tests/tmp-feature2-db.json
 tests/tmp-uploads/
 tests/tmp-feature-uploads/
 tests/tmp-feature2-uploads/
+tests/tmp-security-db.json
 tests/backup-*.json
+tests/tmp-security-uploads/
+tests/tmp-e2e-db.json
+tests/tmp-e2e-uploads/
+tests/tmp-a11y-uploads/
+tests/tmp-a11y-db.json
 
 # Logs and OS metadata
 *.log
